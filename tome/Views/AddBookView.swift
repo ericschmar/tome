@@ -1,0 +1,1011 @@
+import SwiftUI
+import SwiftData
+internal import UniformTypeIdentifiers
+
+// MARK: - Wrapper Views for Navigation
+
+/// Wrapper for Search view
+struct AddBookSearchWrapper: View {
+    let onBookAdded: (Book) -> Void
+
+    var body: some View {
+        AddBookSearchViewWrapper(onBookAdded: onBookAdded)
+    }
+}
+
+/// Wrapper for Manual entry view
+struct AddBookManualWrapper: View {
+    let onBookAdded: (Book) -> Void
+
+    var body: some View {
+        AddBookManualViewWrapper(onBookAdded: onBookAdded)
+    }
+}
+
+// MARK: - Search View
+
+/// Add book search interface
+struct AddBookSearchViewWrapper: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(NavigationState.self) private var navigationState
+    let onBookAdded: (Book) -> Void
+
+    @State private var searchViewModel = BookSearchViewModel()
+
+    var body: some View {
+        AddBookSearchView(
+            viewModel: searchViewModel,
+            onResultSelected: { result in
+                withAnimation {
+                    navigationState.selectedSearchResult = result
+                }
+            }
+        )
+    }
+}
+
+/// Search tab view with intelligent ISBN detection
+struct AddBookSearchView: View {
+    @Bindable var viewModel: BookSearchViewModel
+    var onResultSelected: (BookDocument) -> Void
+    @Environment(NavigationState.self) private var navigationState
+
+    var body: some View {
+        Group {
+            // ISBN hint if detected
+            if isISBNQuery {
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.blue)
+                        Text("ISBN detected - auto-searching")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .transition(.opacity)
+                    
+                    Divider()
+                    
+                    contentView
+                }
+            } else {
+                contentView
+            }
+        }
+        .searchable(
+            text: $viewModel.searchQuery,
+            prompt: "Search by title, author, or ISBN"
+        )
+        .onSubmit(of: .search) {
+            Task {
+                await performSearch()
+            }
+        }
+        .onChange(of: viewModel.searchQuery) { oldValue, newValue in
+            // Auto-search when ISBN format is detected (10 or 13 digits)
+            if isISBNQuery && (newValue.filter { $0.isNumber }.count == 10 || newValue.filter { $0.isNumber }.count == 13) {
+                Task {
+                    await performSearch()
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var contentView: some View {
+        if viewModel.isLoading {
+            VStack {
+                ProgressView(isISBNQuery ? "Looking up ISBN..." : "Searching...")
+                    .padding(.top, 40)
+                Spacer()
+            }
+        } else if let error = viewModel.errorMessage {
+            VStack {
+                ContentUnavailableView {
+                    Label("Search Error", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                }
+                .padding(.top, 40)
+                Spacer()
+            }
+        } else if viewModel.searchResults.isEmpty {
+            // Show help text when no results (whether search is empty or not)
+            if viewModel.searchQuery.isEmpty {
+                VStack {
+                    emptyState
+                        .padding(.top, 40)
+                    Spacer()
+                }
+            } else {
+                VStack {
+                    ContentUnavailableView {
+                        Label("No Results", systemImage: "book.closed")
+                    } description: {
+                        Text("No books found for \"\(viewModel.searchQuery)\"")
+                    }
+                    .padding(.top, 40)
+                    Spacer()
+                }
+            }
+        } else {
+            // Results list
+            List {
+                ForEach(viewModel.searchResults, id: \.key) { result in
+                    SearchResultRow(result: result) {
+                        onResultSelected(result)
+                    }
+                }
+                if viewModel.hasMoreResults && !isISBNQuery {
+                    Button {
+                        Task {
+                            await viewModel.loadMoreResults()
+                        }
+                    } label: {
+                        Text("Load More")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Image(systemName: "magnifyingglass")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+        } description: {
+            VStack(spacing: 12) {
+                Text("Search for books by title, author, or ISBN")
+                    .font(.headline)
+                Text("Enter an ISBN (10 or 13 digits) for automatic lookup")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+    
+    /// Check if the current query is an ISBN
+    private var isISBNQuery: Bool {
+        isISBN(viewModel.searchQuery)
+    }
+    
+    /// Check if a string is an ISBN (only digits, 10 or 13 characters)
+    private func isISBN(_ text: String) -> Bool {
+        let digitsOnly = text.filter { $0.isNumber }
+        return digitsOnly.count == 10 || digitsOnly.count == 13
+    }
+    
+    /// Perform search or ISBN lookup based on query
+    private func performSearch() async {
+        if isISBNQuery {
+            // ISBN lookup - extract only digits
+            let isbn = viewModel.searchQuery.filter { $0.isNumber }
+            if let result = await viewModel.lookupByISBN(isbn) {
+                viewModel.searchResults = [result]
+                withAnimation {
+                    navigationState.selectedSearchResult = result
+                }
+            } else {
+                viewModel.searchResults = []
+            }
+        } else {
+            // Regular search
+            await viewModel.searchBooks()
+        }
+    }
+}
+
+// MARK: - Manual Entry View
+
+/// Add book manual entry interface
+struct AddBookManualViewWrapper: View {
+    let onBookAdded: (Book) -> Void
+
+    var body: some View {
+        AddBookManualView(onBookAdded: onBookAdded)
+    }
+}
+
+/// Manual entry tab view
+struct AddBookManualView: View {
+    @Environment(\.modelContext) private var modelContext
+    let onBookAdded: (Book) -> Void
+
+    @State private var title = ""
+    @State private var authors = ""
+    @State private var isbn = ""
+    @State private var publisher = ""
+    @State private var year = ""
+    @State private var pageCount = ""
+    @State private var description = ""
+    @State private var coverImageData: Data?
+    @State private var showingImagePicker = false
+    @State private var showingURLInput = false
+    @State private var imageURLString = ""
+    @State private var isLoadingImage = false
+    @State private var imageLoadError: String?
+    @FocusState private var focusedField: Field?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "book.pages")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.blue.gradient)
+                        .symbolEffect(.bounce, value: title.isEmpty)
+                    
+                    Text("Add Book Manually")
+                        .font(.title2.bold())
+                    
+                    Text("Enter the book details below")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 20)
+                
+                // Responsive Layout: Cover Image + Essential Information
+                ResponsiveHStack(threshold: 700) {
+                    // Cover Image Section (takes less space)
+                    coverImageSection
+                        .frame(idealWidth: 240, maxWidth: 300)
+                    
+                    // Essential Information (takes more space)
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Essential Information")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Title", systemImage: "text.book.closed")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Book title", text: $title)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .title)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Authors", systemImage: "person.2")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Author names (comma separated)", text: $authors)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .authors)
+                                Text("Separate multiple authors with commas")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(12)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal)
+                
+                // ISBN & Publication Details
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Publication Details")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("ISBN", systemImage: "barcode")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("ISBN-10 or ISBN-13", text: $isbn)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .isbn)
+#if os(iOS)
+                                    .keyboardType(.numbersAndPunctuation)
+#endif
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Year", systemImage: "calendar")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("YYYY", text: $year)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .year)
+#if os(iOS)
+                                    .keyboardType(.numberPad)
+#endif
+                                    .frame(maxWidth: 100)
+                            }
+                        }
+                        
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Publisher", systemImage: "building.2")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Publisher name", text: $publisher)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .publisher)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Pages", systemImage: "doc.text")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("000", text: $pageCount)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .pageCount)
+#if os(iOS)
+                                    .keyboardType(.numberPad)
+#endif
+                                    .frame(maxWidth: 100)
+                            }
+                        }
+                    }
+                    .padding(12)
+                }
+                .padding(.horizontal)
+                
+                // Description
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Description (Optional)", systemImage: "text.alignleft")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        
+                        TextEditor(text: $description)
+                            .frame(minHeight: 120)
+                            .scrollContentBackground(.hidden)
+                            .background(Color(nsColor: .textBackgroundColor))
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                            )
+                            .focused($focusedField, equals: .description)
+                        
+                        if description.isEmpty {
+                            Text("Add a brief description or summary of the book")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .padding(12)
+                }
+                .padding(.horizontal)
+                
+                // Action Buttons
+                HStack(spacing: 12) {
+                    Button {
+                        clearAllFields()
+                    } label: {
+                        Label("Clear", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isFormEmpty)
+                    
+                    Button {
+                        addManualBook()
+                    } label: {
+                        Label("Add Book", systemImage: "plus.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!isFormValid)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+            }
+        }
+        .onAppear {
+            focusedField = .title
+        }
+    }
+    
+    // MARK: - Cover Image Section
+    
+    @ViewBuilder
+    private var coverImageSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Cover Image (Optional)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                VStack(spacing: 12) {
+                    // Cover Preview with Context Menu
+                    ZStack {
+                        if let imageData = coverImageData, let nsImage = NSImage(data: imageData) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 120, height: 180)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(width: 120, height: 180)
+                                .overlay {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 32))
+                                            .foregroundStyle(.secondary)
+                                        Text("Click to Add")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                        }
+                        
+                        if isLoadingImage {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.black.opacity(0.6))
+                                .frame(width: 120, height: 180)
+                                .overlay {
+                                    ProgressView()
+                                        .controlSize(.regular)
+                                        .tint(.white)
+                                }
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingImagePicker = true
+                        } label: {
+                            Label("Choose from Computer", systemImage: "photo.on.rectangle.angled")
+                        }
+                        
+                        Button {
+                            showingURLInput = true
+                        } label: {
+                            Label("Load from URL", systemImage: "link")
+                        }
+                        
+                        if coverImageData != nil {
+                            Divider()
+                            
+                            Button(role: .destructive) {
+                                withAnimation {
+                                    coverImageData = nil
+                                    imageLoadError = nil
+                                }
+                            } label: {
+                                Label("Remove Cover", systemImage: "trash")
+                            }
+                        }
+                    }
+                    .help("Right-click to add or change cover image")
+                    
+                    // Error display
+                    if let error = imageLoadError {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text(error)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    // Hint text
+                    Text("Right-click the image to add a cover")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(12)
+        }
+        .fileImporter(
+            isPresented: $showingImagePicker,
+            allowedContentTypes: [.png, .jpeg, .heic],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImageSelection(result)
+        }
+        .sheet(isPresented: $showingURLInput) {
+            URLImageInputSheet(
+                urlString: $imageURLString,
+                onLoad: { data in
+                    withAnimation {
+                        coverImageData = data
+                        imageLoadError = nil
+                    }
+                },
+                onError: { error in
+                    imageLoadError = error
+                }
+            )
+        }
+    }
+    
+    private func handleImageSelection(_ result: Result<[URL], Error>) {
+        imageLoadError = nil
+        
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            // Check if we have access to the security-scoped resource
+            guard url.startAccessingSecurityScopedResource() else {
+                imageLoadError = "Could not access the selected file"
+                return
+            }
+            
+            defer { url.stopAccessingSecurityScopedResource() }
+            
+            do {
+                let data = try Data(contentsOf: url)
+                
+                // Verify it's a valid image
+                guard NSImage(data: data) != nil else {
+                    imageLoadError = "Selected file is not a valid image"
+                    return
+                }
+                
+                withAnimation {
+                    coverImageData = data
+                }
+            } catch {
+                imageLoadError = "Failed to load image: \(error.localizedDescription)"
+            }
+            
+        case .failure(let error):
+            imageLoadError = "Failed to select image: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Validation
+    
+    private var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !authors.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    private var isFormEmpty: Bool {
+        title.isEmpty && authors.isEmpty && isbn.isEmpty &&
+        publisher.isEmpty && year.isEmpty && pageCount.isEmpty && 
+        description.isEmpty && coverImageData == nil
+    }
+
+    // MARK: - Actions
+    
+    private func addManualBook() {
+        let newBook = Book(
+            title: title,
+            authors: authors.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) },
+            isbn10: isbn.count == 10 ? isbn : nil,
+            isbn13: isbn.count == 13 ? isbn : nil,
+            firstPublishYear: Int(year),
+            bookDescription: description.isEmpty ? nil : description,
+            publishers: publisher.isEmpty ? [] : [publisher],
+            pageCount: Int(pageCount),
+            readingStatus: .toRead
+        )
+        
+        // Set cover image if provided
+        if let imageData = coverImageData {
+            newBook.coverImageData = imageData
+        }
+
+        modelContext.insert(newBook)
+        try? modelContext.save()
+        onBookAdded(newBook)
+        
+        clearAllFields()
+    }
+    
+    private func clearAllFields() {
+        title = ""
+        authors = ""
+        isbn = ""
+        publisher = ""
+        year = ""
+        pageCount = ""
+        description = ""
+        coverImageData = nil
+        imageLoadError = nil
+        focusedField = .title
+    }
+    
+    // MARK: - Focus Management
+    
+    private enum Field: Hashable {
+        case title, authors, isbn, publisher, year, pageCount, description
+    }
+}
+
+// MARK: - URL Image Input Sheet
+
+struct URLImageInputSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var urlString: String
+    let onLoad: (Data) -> Void
+    let onError: (String) -> Void
+    
+    @State private var isLoading = false
+    @State private var previewImage: NSImage?
+    @State private var previewError: String?
+    @FocusState private var isFocused: Bool
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                // URL Input
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Image URL", systemImage: "link")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    TextField("https://example.com/cover.jpg", text: $urlString)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($isFocused)
+                        .onSubmit {
+                            Task {
+                                await loadPreview()
+                            }
+                        }
+                    
+                    Text("Enter the URL of an image (JPG, PNG, or HEIC)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
+                // Preview
+                if isLoading {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text("Loading preview...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = previewError {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let image = previewImage {
+                    VStack(spacing: 12) {
+                        Text("Preview")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 300, maxHeight: 400)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("Enter a URL and press Return to preview")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Load Image from URL")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Use This Image") {
+                        loadAndUseImage()
+                    }
+                    .disabled(previewImage == nil)
+                }
+            }
+            .onAppear {
+                isFocused = true
+            }
+        }
+        .frame(minWidth: 500, minHeight: 400)
+    }
+    
+    private func loadPreview() async {
+        guard !urlString.trimmingCharacters(in: .whitespaces).isEmpty else {
+            previewImage = nil
+            previewError = nil
+            return
+        }
+        
+        guard let url = URL(string: urlString) else {
+            previewError = "Invalid URL"
+            previewImage = nil
+            return
+        }
+        
+        await MainActor.run {
+            isLoading = true
+            previewError = nil
+            previewImage = nil
+        }
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            
+            guard let image = NSImage(data: data) else {
+                throw URLError(.cannotDecodeContentData)
+            }
+            
+            await MainActor.run {
+                previewImage = image
+                isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                previewError = "Failed to load image: \(error.localizedDescription)"
+                isLoading = false
+            }
+        }
+    }
+    
+    private func loadAndUseImage() {
+        guard let url = URL(string: urlString) else {
+            onError("Invalid URL")
+            dismiss()
+            return
+        }
+        
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                
+                guard NSImage(data: data) != nil else {
+                    throw URLError(.cannotDecodeContentData)
+                }
+                
+                await MainActor.run {
+                    onLoad(data)
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    onError("Failed to load image: \(error.localizedDescription)")
+                    dismiss()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Legacy Wrapper for Compatibility
+
+/// Add book interface with search/manual/ISBN tabs (legacy wrapper)
+struct AddBookViewWrapper: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(NavigationState.self) private var navigationState
+    let onBookAdded: (Book) -> Void
+
+    var body: some View {
+        AddBookViewContent(onBookAdded: onBookAdded)
+    }
+}
+
+/// Add book content with search/manual/ISBN tabs (legacy)
+struct AddBookViewContent: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(NavigationState.self) private var navigationState
+    let onBookAdded: (Book) -> Void
+
+    @State private var selectedTab = 0
+    @State private var searchViewModel = BookSearchViewModel()
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            // Search tab - always show results (details appear in detail column)
+            AddBookSearchView(
+                viewModel: searchViewModel,
+                onResultSelected: { result in
+                    withAnimation {
+                        navigationState.selectedSearchResult = result
+                    }
+                }
+            )
+            .tabItem {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+            .tag(0)
+
+            // Manual entry tab
+            AddBookManualView(onBookAdded: onBookAdded)
+                .tabItem {
+                    Label("Manual", systemImage: "pencil")
+                }
+                .tag(1)
+        }
+        .navigationTitle("Add Book")
+    }
+}
+
+// MARK: - Custom Text Field Styles
+
+/// Unified search text field style with dynamic icon based on input type
+struct UnifiedSearchTextFieldStyle: TextFieldStyle {
+    @Binding var text: String
+    let isISBN: Bool
+    var onClear: () -> Void
+    
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        HStack {
+            Image(systemName: isISBN ? "barcode.viewfinder" : "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .animation(.easeInOut(duration: 0.2), value: isISBN)
+            configuration
+            
+            if !text.isEmpty {
+                Button(action: onClear) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(8)
+        .background(Color(nsColor: .systemGray).opacity(0.3))
+        .cornerRadius(8)
+    }
+}
+
+/// Search text field style with magnifying glass icon (legacy)
+struct SearchTextFieldStyle: TextFieldStyle {
+    @Binding var text: String
+    var onClear: () -> Void
+    
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            configuration
+            
+            if !text.isEmpty {
+                Button(action: onClear) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(8)
+        .background(Color(nsColor: .systemGray).opacity(0.3))
+        .cornerRadius(8)
+    }
+}
+
+/// ISBN text field style with barcode icon (legacy)
+struct ISBNTextFieldStyle: TextFieldStyle {
+    @Binding var text: String
+    var onClear: () -> Void
+    
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        HStack {
+            Image(systemName: "barcode.viewfinder")
+                .foregroundStyle(.secondary)
+            configuration
+            
+            if !text.isEmpty {
+                Button(action: onClear) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(8)
+        .background(Color(nsColor: .systemGray).opacity(0.3))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Responsive Layout Helper
+
+/// A container that switches between HStack and VStack based on available width
+struct ResponsiveHStack<Content: View>: View {
+    let threshold: CGFloat
+    let spacing: CGFloat
+    let alignment: VerticalAlignment
+    @ViewBuilder let content: () -> Content
+    
+    @State private var availableWidth: CGFloat = 0
+    
+    init(
+        threshold: CGFloat = 600,
+        spacing: CGFloat = 16,
+        alignment: VerticalAlignment = .top,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.threshold = threshold
+        self.spacing = spacing
+        self.alignment = alignment
+        self.content = content
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            Group {
+                if geometry.size.width >= threshold {
+                    HStack(alignment: alignment, spacing: spacing) {
+                        content()
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: spacing) {
+                        content()
+                    }
+                }
+            }
+            .preference(key: WidthPreferenceKey.self, value: geometry.size.width)
+        }
+        .onPreferenceChange(WidthPreferenceKey.self) { width in
+            availableWidth = width
+        }
+        .frame(minHeight: availableWidth >= threshold ? 300 : nil)
+    }
+}
+
+// MARK: - Preference Key for Width
+
+struct WidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+#Preview {
+    AddBookViewWrapper(onBookAdded: { _ in })
+}

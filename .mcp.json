@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mantic": {
+      "command": "bunx",
+      "args": ["-y", "mantic.sh@latest", "server"]
+    },
+    "memory-keeper": {
+      "command": "bunx",
+      "args": ["mcp-memory-keeper"]
+    },
+    "sequential-thinking": {
+      "command": "bunx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}

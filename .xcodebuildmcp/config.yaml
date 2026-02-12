@@ -1,0 +1,7 @@
+schemaVersion: 1
+sessionDefaults:
+  projectPath: /Users/mmacbook/develop/tome/tome.xcodeproj
+  scheme: tome
+  simulatorName: iPhone 16
+  simulatorPlatform: iOS Simulator
+  platform: macOS
