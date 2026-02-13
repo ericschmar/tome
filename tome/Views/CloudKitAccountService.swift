@@ -1,6 +1,10 @@
 import Foundation
 internal import CloudKit
+#if canImport(AppKit)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 
 /// Service to fetch and manage CloudKit account information
 @MainActor
@@ -10,7 +14,11 @@ class CloudKitAccountService {
     
     var accountStatus: CKAccountStatus = .couldNotDetermine
     var userDisplayName: String?
+    #if canImport(AppKit)
     var userPhoto: NSImage?
+    #elseif canImport(UIKit)
+    var userPhoto: UIImage?
+    #endif
     var isLoading = false
     var error: Error?
     var isCloudKitEnabled = false
@@ -49,7 +57,11 @@ class CloudKitAccountService {
             isCloudKitEnabled = false
             accountStatus = .noAccount
             userDisplayName = "Local User"
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+            #if canImport(AppKit)
+            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+            #elseif canImport(UIKit)
+            userPhoto = UIImage(systemName: "person.circle.fill")
+            #endif
             isLoading = false
             return
         }
@@ -70,7 +82,11 @@ class CloudKitAccountService {
                 }
                 isCloudKitEnabled = false
                 userDisplayName = "Local User"
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+                #if canImport(AppKit)
+                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+                #elseif canImport(UIKit)
+                userPhoto = UIImage(systemName: "person.circle.fill")
+                #endif
                 isLoading = false
                 return
             }
@@ -119,7 +135,11 @@ class CloudKitAccountService {
                 
                 // Fall back to system user name instead
                 userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+                #if canImport(AppKit)
+                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+                #elseif canImport(UIKit)
+                userPhoto = UIImage(systemName: "person.circle.fill")
+                #endif
                 
                 print("   Using system user name: \(userDisplayName ?? "unknown")")
             } catch {
@@ -128,7 +148,11 @@ class CloudKitAccountService {
                 
                 // Fall back to system user name
                 userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+                #if canImport(AppKit)
+                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+                #elseif canImport(UIKit)
+                userPhoto = UIImage(systemName: "person.circle.fill")
+                #endif
             }
             
             isLoading = false
@@ -159,7 +183,11 @@ class CloudKitAccountService {
                 accountStatus = .noAccount
             }
             userDisplayName = "Local User"
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+            #if canImport(AppKit)
+            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+            #elseif canImport(UIKit)
+            userPhoto = UIImage(systemName: "person.circle.fill")
+            #endif
             isLoading = false
         } catch {
             // Non-CloudKit errors
@@ -167,7 +195,11 @@ class CloudKitAccountService {
             isCloudKitEnabled = false
             accountStatus = .noAccount
             userDisplayName = "Local User"
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+            #if canImport(AppKit)
+            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+            #elseif canImport(UIKit)
+            userPhoto = UIImage(systemName: "person.circle.fill")
+            #endif
             isLoading = false
             print("❌ CloudKitAccountService: Unexpected error - \(error.localizedDescription)")
         }
@@ -176,9 +208,13 @@ class CloudKitAccountService {
     /// Attempt to fetch user photo from system
     private func fetchUserPhotoFromContacts() async {
         // For now, we'll use the default user image
-        // In a production app, you might want to use Contacts framework
+        // TODO: In a production app, you might want to use Contacts framework
         // or let the user set a custom profile photo
-        userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: "User")
+        #if canImport(AppKit)
+        userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+        #elseif canImport(UIKit)
+        userPhoto = UIImage(systemName: "person.circle.fill")
+        #endif
     }
     
     /// Returns a placeholder name if no user name is available

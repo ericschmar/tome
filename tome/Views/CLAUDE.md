@@ -9,7 +9,4 @@
 |----|------|---|-------|------|
 | #2754 | 9:45 PM | 🔵 | LibraryListView uses @ObservedObject instead of @Bindable | ~166 |
 | #2751 | 9:44 PM | 🔵 | AddBookView has UIKit references and ObservableObject issues | ~208 |
-| #2742 | 9:33 PM | 🔴 | Fixed parameter order in BookDetailView Preview | ~144 |
-| #2735 | " | 🔴 | Removed illegal return statement from BookDetailView Preview | ~134 |
-| #2730 | 9:32 PM | 🔵 | BookDetailView has illegal return statement in ViewBuilder | ~134 |
 </claude-mem-context>

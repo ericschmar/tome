@@ -7,10 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5369DD972F3D13F500214A2C /* ColorSelector in Frameworks */ = {isa = PBXBuildFile; productRef = 5369DD962F3D13F500214A2C /* ColorSelector */; };
+		533FAFB02F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */; };
+		533FAFB62F3EC71800EFE0CE /* tome_icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 533FAFB52F3EC71800EFE0CE /* tome_icon.icon */; };
+		5369DD972F3D13F500214A2C /* ColorSelector in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = 5369DD962F3D13F500214A2C /* ColorSelector */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLATFORM_COLOR_PICKER_GUIDE.md; sourceTree = "<group>"; };
+		533FAFB52F3EC71800EFE0CE /* tome_icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = tome_icon.icon; sourceTree = "<group>"; };
 		5381F6292F3C17B800D3F187 /* tome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tome.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -57,8 +61,10 @@
 		5381F6202F3C17B800D3F187 = {
 			isa = PBXGroup;
 			children = (
+				533FAFB52F3EC71800EFE0CE /* tome_icon.icon */,
 				5381F62B2F3C17B800D3F187 /* tome */,
 				5381F62A2F3C17B800D3F187 /* Products */,
+				533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -138,6 +144,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				533FAFB02F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md in Resources */,
+				533FAFB62F3EC71800EFE0CE /* tome_icon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,8 +165,9 @@
 		5381F6382F3C17B900D3F187 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = tome_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = tome/tome.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -178,6 +187,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tome/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -212,8 +222,9 @@
 		5381F6392F3C17B900D3F187 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = tome_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = tome/tome.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -233,6 +244,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = tome/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

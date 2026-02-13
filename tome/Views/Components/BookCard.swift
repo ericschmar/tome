@@ -32,13 +32,15 @@ struct BookCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(book.title)
                         .font(.headline)
-                        .lineLimit(size == .small ? 2 : 3)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .multilineTextAlignment(.leading)
 
                     Text(book.authorsDisplay)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
 
                     if size != .small {
                         HStack {

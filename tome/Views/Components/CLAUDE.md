@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #2758 | 9:45 PM | 🔵 | ReadingStatusPicker uses iOS-specific color Color(.systemGray6) | ~144 |
 | #2729 | 9:32 PM | 🔴 | Migrated BookCoverView from UIKit to AppKit | ~227 |
 | #2726 | 9:31 PM | 🔵 | BookCoverView uses UIKit types and needs AppKit migration | ~187 |
 </claude-mem-context>

@@ -41,8 +41,10 @@ struct SettingsView: View {
                 .padding(.vertical, 20)
             }
         }
+        #if os(macOS)
         .frame(width: 500, height: 450)
-        .background(Color(nsColor: .windowBackgroundColor))
+        #endif
+        .background(.ultraThinMaterial)
         .onAppear {
             updateCacheSize()
         }

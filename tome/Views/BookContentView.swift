@@ -1,4 +1,3 @@
-import ColorSelector
 import SwiftData
 import SwiftUI
 
@@ -587,10 +586,13 @@ struct AddTagSheet: View {
                                 }
                             }
 
-                        ColorSelector(selection: $selectedColor)
-                            .showsAlpha(false)
-                            .environment(\.cornerSize, 4)
-                            .controlSize(.large)
+                        PlatformColorPicker(
+                            selection: Binding(
+                                get: { selectedColor ?? .blue },
+                                set: { selectedColor = $0 }
+                            ),
+                            supportsOpacity: false
+                        )
 
                         Button {
                             addTag()
@@ -877,7 +879,7 @@ struct CoverOptionView: View {
     let isSelected: Bool
     let onTap: () -> Void
 
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
     @State private var isLoading = false
     @State private var loadError: Error?
 
@@ -890,7 +892,7 @@ struct CoverOptionView: View {
             VStack(spacing: 0) {
                 ZStack {
                     if let image = image {
-                        Image(nsImage: image)
+                        Image(platformImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(height: 225)
@@ -983,47 +985,6 @@ struct CoverOptionView: View {
                 )
             }
         }
-    }
-}
-
-// MARK: - Color Extensions
-
-#if canImport(AppKit)
-    import AppKit
-#endif
-
-#if canImport(UIKit)
-    import UIKit
-#endif
-
-extension Color {
-    func toHex() -> String {
-        #if canImport(UIKit)
-            let uiColor = UIColor(self)
-            var red: CGFloat = 0
-            var green: CGFloat = 0
-            var blue: CGFloat = 0
-            var alpha: CGFloat = 0
-
-            uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-
-            let rgb = Int(red * 255) << 16 | Int(green * 255) << 8 | Int(blue * 255)
-            return String(format: "#%06X", rgb)
-        #elseif canImport(AppKit)
-            let nsColor = NSColor(self)
-            guard let rgbColor = nsColor.usingColorSpace(.deviceRGB) else {
-                return "#007AFF"
-            }
-
-            let red = rgbColor.redComponent
-            let green = rgbColor.greenComponent
-            let blue = rgbColor.blueComponent
-
-            let rgb = Int(red * 255) << 16 | Int(green * 255) << 8 | Int(blue * 255)
-            return String(format: "#%06X", rgb)
-        #else
-            return "#007AFF"
-        #endif
     }
 }
 

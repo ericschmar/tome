@@ -6,13 +6,32 @@ struct NavigationRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(NavigationState.self) private var navigationState
     @State private var viewModel: LibraryViewModel?
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
 
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            iOSMainContent
+        }
+        .onAppear {
+            if viewModel == nil {
+                viewModel = LibraryViewModel(modelContext: modelContext)
+                // Sync the initial destination with navigation state
+                viewModel?.setSelectedDestination(navigationState.selectedDestination)
+            }
+        }
+        .onChange(of: navigationState.selectedDestination) { _, _ in
+            // Auto-hide sidebar when user taps a sidebar item on iOS
+            withAnimation {
+                navigationState.isSidebarPresented = false
+            }
+        }
+        #else
         Group {
             // Use different layouts based on whether the destination needs a detail pane
             if shouldShowDetailPane(navigationState.selectedDestination) {
                 // Three-column layout for destinations with detail pane
-                NavigationSplitView(columnVisibility: .constant(.all)) {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
                     LibrarySidebar(
                         selectedDestination: Binding(
                             get: { navigationState.selectedDestination },
@@ -39,7 +58,7 @@ struct NavigationRootView: View {
                 }
             } else {
                 // Two-column layout for destinations without detail pane
-                NavigationSplitView {
+                NavigationSplitView(columnVisibility: $columnVisibility) {
                     LibrarySidebar(
                         selectedDestination: Binding(
                             get: { navigationState.selectedDestination },
@@ -70,6 +89,7 @@ struct NavigationRootView: View {
                 viewModel?.setSelectedDestination(navigationState.selectedDestination)
             }
         }
+        #endif
     }
 
     // MARK: - Helper Methods
@@ -87,6 +107,78 @@ struct NavigationRootView: View {
             return false  // Settings is a single view
         }
     }
+
+    // MARK: - iOS Content
+
+    #if os(iOS)
+    /// iOS-specific main content with sidebar sheet and toolbar toggle
+    @ViewBuilder
+    private var iOSMainContent: some View {
+        contentForDestination(navigationState.selectedDestination)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        withAnimation {
+                            navigationState.isSidebarPresented = true
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                    }
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { navigationState.isSidebarPresented },
+                set: { navigationState.isSidebarPresented = $0 }
+            )) {
+                LibrarySidebar(
+                    selectedDestination: Binding(
+                        get: { navigationState.selectedDestination },
+                        set: { newValue in
+                            navigationState.selectedDestination = newValue
+                            viewModel?.setSelectedDestination(newValue)
+                            // Clear selected book/result when navigating to non-library destinations
+                            switch newValue {
+                            case .addBookSearch, .addBookManual, .addBookBulk, .settings:
+                                navigationState.selectedBook = nil
+                            default:
+                                break
+                            }
+                        }
+                    )
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+            .navigationDestination(item: Binding(
+                get: { navigationState.selectedBook },
+                set: { navigationState.selectedBook = $0 }
+            )) { book in
+                BookContentView(
+                    source: .library(book),
+                    onBack: {
+                        navigationState.selectedBook = nil
+                    },
+                    onDelete: {
+                        viewModel?.deleteBook(book)
+                    }
+                )
+            }
+            .navigationDestination(item: Binding(
+                get: { navigationState.selectedSearchResult },
+                set: { navigationState.selectedSearchResult = $0 }
+            )) { result in
+                BookContentView(
+                    source: .search(result),
+                    onAdd: {
+                        addBookFromSearch(result)
+                    },
+                    onBack: {
+                        navigationState.selectedSearchResult = nil
+                    }
+                )
+            }
+    }
+    #endif
 
     // MARK: - Content Views
 
@@ -332,11 +424,14 @@ struct LibraryContentListView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(book.title)
                                 .font(.headline)
-                                .lineLimit(2)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
 
                             Text(book.authorsDisplay)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
 
                             HStack(spacing: 6) {
                                 Image(systemName: book.readingStatus.icon)
@@ -362,100 +457,198 @@ struct FilterPopover: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Filters & Sort")
-                .font(.headline)
-
-            Divider()
-
-            Group {
-                Picker("Sort By", selection: $viewModel.sortOption) {
-                    ForEach(LibraryViewModel.SortOption.allCases, id: \.self) { option in
-                        Text(option.displayName).tag(option)
+#if os(iOS)
+        NavigationStack {
+            Form {
+                // Sort Options Section
+                Section {
+                    Picker("Sort By", selection: $viewModel.sortOption) {
+                        ForEach(LibraryViewModel.SortOption.allCases, id: \.self) { option in
+                            Text(option.displayName).tag(option)
+                        }
                     }
-                }
-                .pickerStyle(.menu)
-
-                HStack {
-                    Text("Direction")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Picker("", selection: $viewModel.sortDirection) {
+                    
+                    Picker("Direction", selection: $viewModel.sortDirection) {
                         Text("Ascending").tag(LibraryViewModel.SortDirection.ascending)
                         Text("Descending").tag(LibraryViewModel.SortDirection.descending)
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 160)
+                } header: {
+                    Text("Sort")
                 }
-
-                Picker("Reading Status", selection: $viewModel.selectedStatus) {
-                    Text("All").tag(nil as ReadingStatus?)
-                    ForEach(ReadingStatus.allCases, id: \.self) { status in
-                        Text(status.displayName).tag(status as ReadingStatus?)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                if !viewModel.allTags.isEmpty {
-                    Picker("Tag", selection: $viewModel.selectedTag) {
-                        Text("All").tag(nil as Tag?)
-                        ForEach(viewModel.allTags, id: \.id) { tag in
-                            Text(tag.name).tag(tag as Tag?)
+                
+                // Filter Options Section
+                Section {
+                    Picker("Reading Status", selection: $viewModel.selectedStatus) {
+                        Text("All").tag(nil as ReadingStatus?)
+                        ForEach(ReadingStatus.allCases, id: \.self) { status in
+                            Text(status.displayName).tag(status as ReadingStatus?)
                         }
                     }
-                    .pickerStyle(.menu)
+                    
+                    if !viewModel.allTags.isEmpty {
+                        Picker("Tag", selection: $viewModel.selectedTag) {
+                            Text("All").tag(nil as Tag?)
+                            ForEach(viewModel.allTags, id: \.id) { tag in
+                                Text(tag.name).tag(tag as Tag?)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Filters")
+                }
+                
+                // Statistics Section
+                Section {
+                    LabeledContent("Total Books", value: "\(viewModel.totalBooks)")
+                    LabeledContent("Reading", value: "\(viewModel.readingCount)")
+                    LabeledContent("To Read", value: "\(viewModel.toReadCount)")
+                    LabeledContent("Read", value: "\(viewModel.readCount)")
+                } header: {
+                    Text("Statistics")
                 }
             }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Statistics")
+            .navigationTitle("Filters & Sort")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+#else
+        // macOS: Modern Form-based design
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Filters & Sort")
                     .font(.headline)
-
-                HStack {
-                    Text("Total Books")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(viewModel.totalBooks)")
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack {
-                    Text("Reading")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(viewModel.readingCount)")
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack {
-                    Text("To Read")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(viewModel.toReadCount)")
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack {
-                    Text("Read")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(viewModel.readCount)")
-                        .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
+            
+            Divider()
+            
+            // Content in ScrollView
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Sort Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Sort")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        
+                        Picker("Sort By", selection: $viewModel.sortOption) {
+                            ForEach(LibraryViewModel.SortOption.allCases, id: \.self) { option in
+                                Text(option.displayName).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        
+                        Picker("Direction", selection: $viewModel.sortDirection) {
+                            Text("Ascending").tag(LibraryViewModel.SortDirection.ascending)
+                            Text("Descending").tag(LibraryViewModel.SortDirection.descending)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    
+                    Divider()
+                        .padding(.horizontal, 20)
+                    
+                    // Filters Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Filters")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        
+                        Picker("Reading Status", selection: $viewModel.selectedStatus) {
+                            Text("All").tag(nil as ReadingStatus?)
+                            ForEach(ReadingStatus.allCases, id: \.self) { status in
+                                Text(status.displayName).tag(status as ReadingStatus?)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        
+                        if !viewModel.allTags.isEmpty {
+                            Picker("Tag", selection: $viewModel.selectedTag) {
+                                Text("All").tag(nil as Tag?)
+                                ForEach(viewModel.allTags, id: \.id) { tag in
+                                    Text(tag.name).tag(tag as Tag?)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    
+                    Divider()
+                        .padding(.horizontal, 20)
+                    
+                    // Statistics Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Statistics")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("Total Books")
+                                Spacer()
+                                Text("\(viewModel.totalBooks)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            HStack {
+                                Text("Reading")
+                                Spacer()
+                                Text("\(viewModel.readingCount)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            HStack {
+                                Text("To Read")
+                                Spacer()
+                                Text("\(viewModel.toReadCount)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            HStack {
+                                Text("Read")
+                                Spacer()
+                                Text("\(viewModel.readCount)")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
                 }
             }
-
+            
+            Divider()
+            
+            // Footer with Done button
             HStack {
                 Spacer()
                 Button("Done") {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
-        .padding()
-        .frame(width: 280)
+        .frame(width: 320, height: 480)
+#endif
     }
 }
 

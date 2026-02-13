@@ -1,5 +1,12 @@
 import SwiftUI
+
+#if canImport(AppKit)
 import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Async image loading view for book covers with placeholder
 struct BookCoverView: View {
@@ -20,21 +27,21 @@ struct BookCoverView: View {
         }
     }
 
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
     @State private var isLoading = false
     @State private var imageCache = ImageCacheService.shared
 
     var body: some View {
         Group {
             if let image = image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
                     .aspectRatio(contentMode: .fill)
             } else if let coverImageData = coverImageData,
-                      let nsImage = NSImage(data: coverImageData) {
-                Image(nsImage: nsImage)
+                      let platformImage = PlatformImage.from(data: coverImageData) {
+                Image(platformImage: platformImage)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
@@ -59,7 +66,7 @@ struct BookCoverView: View {
 
     private var placeholderView: some View {
         ZStack {
-            Color(nsColor: .separatorColor)
+            Color(white: 0.5, opacity: 0.2)
 
             Image(systemName: "book.closed")
                 .font(.system(size: size.dimension / 3))

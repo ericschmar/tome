@@ -68,7 +68,7 @@ struct UserProfileView: View {
     @ViewBuilder
     private var userPhotoView: some View {
         if let photo = accountService.userPhoto {
-            Image(nsImage: photo)
+            Image(platformImage: photo)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } else {

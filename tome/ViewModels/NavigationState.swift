@@ -22,6 +22,11 @@ final class NavigationState {
     /// Column visibility state
     var columnVisibility: NavigationSplitViewVisibility = .all
 
+    #if os(iOS)
+    /// Whether the sidebar is currently presented (iOS only)
+    var isSidebarPresented = false
+    #endif
+
     /// Filter and sort state
     var selectedStatus: ReadingStatus?
     var selectedTag: Tag?

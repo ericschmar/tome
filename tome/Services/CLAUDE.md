@@ -8,8 +8,10 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #2723 | 9:30 PM | 🔴 | Fixed ImageCacheService ObservableObject conformance | ~174 |
+| #2722 | " | 🔴 | Fixed ImageCacheService ObservableObject conformance | ~166 |
 | #2717 | " | 🔴 | Fixed OpenLibraryService ObservableObject conformance | ~193 |
 | #2713 | 9:29 PM | 🔵 | OpenLibraryService missing ObservableObject conformance | ~218 |
-| #2707 | 9:26 PM | 🔴 | Updated fetchImage method to use NSImage instead of UIImage | ~182 |
+| #2708 | 9:26 PM | 🔴 | Updated cacheImage method to use NSImage and TIFF format | ~199 |
+| #2707 | " | 🔴 | Updated fetchImage method to use NSImage instead of UIImage | ~182 |
 | #2706 | " | 🔴 | Migrated ImageCacheService from UIKit to AppKit for macOS | ~197 |
 </claude-mem-context>

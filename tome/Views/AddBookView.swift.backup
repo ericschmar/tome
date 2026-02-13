@@ -128,8 +128,7 @@ struct AddBookSearchView: View {
                         .padding(.top, 40)
                     Spacer()
                 }
-            } else if viewModel.hasPerformedSearch {
-                // Only show "no results" if we've actually performed a search
+            } else {
                 VStack {
                     ContentUnavailableView {
                         Label("No Results", systemImage: "book.closed")
@@ -137,13 +136,6 @@ struct AddBookSearchView: View {
                         Text("No books found for \"\(viewModel.searchQuery)\"")
                     }
                     .padding(.top, 40)
-                    Spacer()
-                }
-            } else {
-                // Still typing, haven't searched yet - show empty state
-                VStack {
-                    emptyState
-                        .padding(.top, 40)
                     Spacer()
                 }
             }
@@ -251,8 +243,8 @@ struct AddBookManualView: View {
 
     var body: some View {
         Form {
-            // Header Section
-            Section {
+            VStack(spacing: 24) {
+                // Header
                 VStack(spacing: 8) {
                     Image(systemName: "book.pages")
                         .font(.system(size: 48))
@@ -266,202 +258,168 @@ struct AddBookManualView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-                .listRowBackground(Color.clear)
-            }
-            
-            // Cover Image Section
-            Section {
-                coverImageSection
-            } header: {
-                Label("Cover Image (Optional)", systemImage: "photo")
-            }
-            
-            // Essential Information Section
-            Section {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Title", systemImage: "text.book.closed")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Book title", text: $title)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .title)
-                    }
+                .padding(.top, 20)
+                
+                // Responsive Layout: Cover Image + Essential Information
+                ResponsiveHStack(threshold: 700) {
+                    // Cover Image Section (takes less space)
+                    coverImageSection
+                        .frame(idealWidth: 240, maxWidth: 300)
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Authors", systemImage: "person.2")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Author names (comma separated)", text: $authors)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .authors)
-                        Text("Separate multiple authors with commas")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-            } header: {
-                Label("Essential Information", systemImage: "book.closed")
-            }
-            
-            // Publication Details Section
-            Section {
-#if os(macOS)
-                // macOS: Two-column layout
-                HStack(alignment: .top, spacing: 20) {
-                    // Left column: ISBN and Publisher
-                    VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("ISBN", systemImage: "barcode")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("ISBN-10 or ISBN-13", text: $isbn)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .isbn)
+                    // Essential Information (takes more space)
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Essential Information")
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Title", systemImage: "text.book.closed")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Book title", text: $title)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .title)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Authors", systemImage: "person.2")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Author names (comma separated)", text: $authors)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .authors)
+                                Text("Separate multiple authors with commas")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Publisher", systemImage: "building.2")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("Publisher name", text: $publisher)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .publisher)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    
-                    // Right column: Year and Pages
-                    VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Year", systemImage: "calendar")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("YYYY", text: $year)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .year)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Pages", systemImage: "doc.text")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("000", text: $pageCount)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .pageCount)
-                        }
+                        .padding(12)
                     }
                     .frame(maxWidth: .infinity)
                 }
-#else
-                // iOS: Single-column layout
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("ISBN", systemImage: "barcode")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("ISBN-10 or ISBN-13", text: $isbn)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .isbn)
-                            .keyboardType(.numbersAndPunctuation)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Year", systemImage: "calendar")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("YYYY", text: $year)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .year)
-                                .keyboardType(.numberPad)
-                        }
+                .padding(.horizontal)
+                
+                // ISBN & Publication Details
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Publication Details")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Pages", systemImage: "doc.text")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("000", text: $pageCount)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .pageCount)
-                                .keyboardType(.numberPad)
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Publisher", systemImage: "building.2")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Publisher name", text: $publisher)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .publisher)
-                    }
-                }
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("ISBN", systemImage: "barcode")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("ISBN-10 or ISBN-13", text: $isbn)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .isbn)
+#if os(iOS)
+                                    .keyboardType(.numbersAndPunctuation)
 #endif
-            } header: {
-                Label("Publication Details", systemImage: "info.circle")
-            }
-            
-            // Description Section
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    TextEditor(text: $description)
-                        .frame(minHeight: 120)
-                        .scrollContentBackground(.hidden)
-                        .background {
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Year", systemImage: "calendar")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("YYYY", text: $year)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .year)
+#if os(iOS)
+                                    .keyboardType(.numberPad)
+#endif
+                                    .frame(maxWidth: 100)
+                            }
+                        }
+                        
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Publisher", systemImage: "building.2")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("Publisher name", text: $publisher)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .publisher)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Label("Pages", systemImage: "doc.text")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                TextField("000", text: $pageCount)
+                                    .textFieldStyle(.roundedBorder)
+                                    .focused($focusedField, equals: .pageCount)
+#if os(iOS)
+                                    .keyboardType(.numberPad)
+#endif
+                                    .frame(maxWidth: 100)
+                            }
+                        }
+                    }
+                    .padding(12)
+                }
+                .padding(.horizontal)
+                
+                // Description
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Description (Optional)", systemImage: "text.alignleft")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        
+                        TextEditor(text: $description)
+                            .frame(minHeight: 120)
+                            .scrollContentBackground(.hidden)
+                            .background {
 #if canImport(AppKit)
-                            Color(nsColor: .textBackgroundColor)
+                                Color(nsColor: .textBackgroundColor)
 #else
-                            Color(.systemBackground)
+                                Color(.systemBackground)
 #endif
+                            }
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                            .focused($focusedField, equals: .description)
+                        
+                        if description.isEmpty {
+                            Text("Add a brief description or summary of the book")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                         }
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                        )
-                        .focused($focusedField, equals: .description)
-                    
-                    if description.isEmpty {
-                        Text("Add a brief description or summary of the book")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
                     }
+                    .padding(12)
                 }
-            } header: {
-                Label("Description (Optional)", systemImage: "text.alignleft")
-            }
-            
-            // Action Buttons Section
-            Section {
+                .padding(.horizontal)
+                
+                // Action Buttons
                 HStack(spacing: 12) {
                     Button {
                         clearAllFields()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
+                        Label("Clear", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
                     .disabled(isFormEmpty)
                     
                     Button {
                         addManualBook()
                     } label: {
-                        Text("Add Book")
+                        Label("Add Book", systemImage: "plus.circle.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!isFormValid)
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
             }
         }
-        .formStyle(.grouped)
-#if os(iOS)
-        .environment(\.defaultMinListHeaderHeight, 0)
-#endif
         .onAppear {
             focusedField = .title
         }
@@ -471,114 +429,105 @@ struct AddBookManualView: View {
     
     @ViewBuilder
     private var coverImageSection: some View {
-        VStack(spacing: 12) {
-            // Cover Preview
-            Menu {
-                Button {
-                    showingImagePicker = true
-                } label: {
-                    Label("Choose from Photos", systemImage: "photo.on.rectangle")
-                }
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Cover Image (Optional)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
                 
-                Button {
-                    showingURLInput = true
-                } label: {
-                    Label("Load from URL", systemImage: "link")
-                }
-                
-                if coverImageData != nil {
-                    Divider()
-                    
-                    Button(role: .destructive) {
-                        withAnimation {
-                            coverImageData = nil
-                            imageLoadError = nil
-                        }
-                    } label: {
-                        Label("Remove Cover", systemImage: "trash")
-                    }
-                }
-            } label: {
-                ZStack {
-                    if let imageData = coverImageData, let platformImage = PlatformImage.from(data: imageData) {
-                        Image(platformImage: platformImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 120, height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                    } else {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.secondary.opacity(0.1))
-                            .frame(width: 120, height: 180)
-                            .overlay {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 32))
-                                        .foregroundStyle(.secondary)
-#if os(iOS)
-                                    Text("Tap to Add")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-#else
-                                    Text("Click to Add")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-#endif
+                VStack(spacing: 12) {
+                    // Cover Preview with Context Menu
+                    ZStack {
+                        if let imageData = coverImageData, let platformImage = PlatformImage.from(data: imageData) {
+                            Image(platformImage: platformImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 120, height: 180)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(width: 120, height: 180)
+                                .overlay {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 32))
+                                            .foregroundStyle(.secondary)
+                                        Text("Click to Add")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
                                 }
+                        }
+                        
+                        if isLoadingImage {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.black.opacity(0.6))
+                                .frame(width: 120, height: 180)
+                                .overlay {
+                                    ProgressView()
+                                        .controlSize(.regular)
+                                        .tint(.white)
+                                }
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            showingImagePicker = true
+                        } label: {
+                            Label("Choose from Computer", systemImage: "photo.on.rectangle.angled")
+                        }
+                        
+                        Button {
+                            showingURLInput = true
+                        } label: {
+                            Label("Load from URL", systemImage: "link")
+                        }
+                        
+                        if coverImageData != nil {
+                            Divider()
+                            
+                            Button(role: .destructive) {
+                                withAnimation {
+                                    coverImageData = nil
+                                    imageLoadError = nil
+                                }
+                            } label: {
+                                Label("Remove Cover", systemImage: "trash")
                             }
+                        }
+                    }
+                    .help("Right-click to add or change cover image")
+                    
+                    // Error display
+                    if let error = imageLoadError {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text(error)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .frame(maxWidth: .infinity)
                     }
                     
-                    if isLoadingImage {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.6))
-                            .frame(width: 120, height: 180)
-                            .overlay {
-                                ProgressView()
-                                    .controlSize(.regular)
-                                    .tint(.white)
-                            }
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-#if os(macOS)
-            .menuStyle(.borderlessButton)
-            .help("Click to add or change cover image")
-#endif
-            
-#if os(iOS)
-            // iOS: Hint text
-            Text(coverImageData == nil ? "Tap the image to add a cover" : "Tap to change or remove")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-#else
-            // macOS: Hint text
-            Text("Click the image to add a cover")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-#endif
-            
-            // Error display
-            if let error = imageLoadError {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text(error)
+                    // Hint text
+                    Text("Right-click the image to add a cover")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(8)
-                .background(Color.orange.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+            .padding(12)
         }
-        .frame(maxWidth: .infinity)
         .fileImporter(
             isPresented: $showingImagePicker,
             allowedContentTypes: [.png, .jpeg, .heic],

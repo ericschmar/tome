@@ -1,7 +1,14 @@
 import Foundation
 import SwiftData
-import AppKit
 import Observation
+
+#if canImport(AppKit)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// View model for single book operations
 @MainActor
@@ -14,7 +21,7 @@ final class BookDetailViewModel {
     var book: Book
     var isLoading = false
     var errorMessage: String?
-    var coverImage: NSImage?
+    var coverImage: PlatformImage?
 
     init(modelContext: ModelContext, book: Book) {
         self.modelContext = modelContext
@@ -87,7 +94,7 @@ final class BookDetailViewModel {
     func loadCoverImage() {
         // Check if we have cached data
         if let imageData = book.coverImageData,
-           let image = NSImage(data: imageData) {
+           let image = PlatformImage(data: imageData) {
             coverImage = image
             return
         }
@@ -105,11 +112,18 @@ final class BookDetailViewModel {
             let image = try await imageCache.fetchImage(url: url)
             coverImage = image
 
-            // Optionally save to book
+            // Optionally save to book - handle platform-specific image data
+            #if canImport(AppKit)
             if let tiffData = image.tiffRepresentation {
                 book.coverImageData = tiffData
                 try? modelContext.save()
             }
+            #elseif canImport(UIKit)
+            if let pngData = image.pngData() {
+                book.coverImageData = pngData
+                try? modelContext.save()
+            }
+            #endif
         } catch {
             print("Failed to fetch cover image: \(error)")
         }
@@ -126,7 +140,7 @@ final class BookDetailViewModel {
         do {
             let data = try await imageCache.fetchImageData(url: url)
             book.coverImageData = data
-            coverImage = NSImage(data: data)
+            coverImage = PlatformImage(data: data)
             updateBook()
         } catch {
             self.errorMessage = error.localizedDescription

@@ -24,7 +24,9 @@ struct LibrarySidebar: View {
                 Section("Add Book") {
                     sidebarRow(for: .addBookSearch, badge: nil)
                     sidebarRow(for: .addBookManual, badge: nil)
+#if os(macOS)
                     sidebarRow(for: .addBookBulk, badge: nil)
+#endif
                 }
 
                 // Tags section (only show if there are tags)
@@ -57,10 +59,11 @@ struct LibrarySidebar: View {
 
     // MARK: - Helper Views
 
+    @ViewBuilder
     private func sidebarRow(for destination: NavigationDestination, badge: Int?) -> some View {
         let isSelected = selectedDestination == destination
 
-        return Button {
+        Button {
             selectedDestination = destination
         } label: {
             HStack(spacing: 8) {
@@ -92,6 +95,7 @@ struct LibrarySidebar: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
+        .tag(destination)
     }
 
     // MARK: - Computed Properties

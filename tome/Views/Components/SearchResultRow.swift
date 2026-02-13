@@ -85,7 +85,7 @@ struct SearchResultRow: View {
     }
 
     private var placeholderView: some View {
-        Color(nsColor: .systemGray)
+        Color(.systemGray)
             .overlay {
                 Image(systemName: "book.closed")
                     .font(.title3)
@@ -108,7 +108,7 @@ struct Badge: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(Color(nsColor: .systemGray))
+        .background(Color(.systemGray))
         .foregroundStyle(.secondary)
         .clipShape(Capsule())
     }

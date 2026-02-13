@@ -12,6 +12,7 @@ final class BookSearchViewModel {
     var isLoading = false
     var errorMessage: String?
     var hasMoreResults = false
+    var hasPerformedSearch = false
     var currentOffset = 0
     private let limit = 20
 
@@ -20,6 +21,7 @@ final class BookSearchViewModel {
     func searchBooks() async {
         guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else {
             searchResults = []
+            hasPerformedSearch = false
             return
         }
 
@@ -31,9 +33,11 @@ final class BookSearchViewModel {
             let results = try await service.searchBooksDebounced(query: searchQuery)
             searchResults = results
             hasMoreResults = results.count == limit
+            hasPerformedSearch = true
         } catch {
             self.errorMessage = error.localizedDescription
             searchResults = []
+            hasPerformedSearch = true
         }
 
         isLoading = false
@@ -67,6 +71,7 @@ final class BookSearchViewModel {
         errorMessage = nil
         currentOffset = 0
         hasMoreResults = false
+        hasPerformedSearch = false
     }
 
     // MARK: - ISBN Lookup
@@ -74,6 +79,7 @@ final class BookSearchViewModel {
     func lookupByISBN(_ isbn: String) async -> BookDocument? {
         isLoading = true
         errorMessage = nil
+        hasPerformedSearch = true
 
         do {
             let result = try await service.lookupByISBN(isbn)

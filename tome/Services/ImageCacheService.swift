@@ -1,6 +1,13 @@
 import Foundation
-import AppKit
 import Observation
+
+#if canImport(AppKit)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Image caching service with memory and disk storage
 @MainActor
@@ -8,7 +15,7 @@ import Observation
 final class ImageCacheService {
     static let shared = ImageCacheService()
 
-    private let memoryCache = NSCache<NSString, NSImage>()
+    private let memoryCache = NSCache<NSString, PlatformImage>()
     private let diskCache: URL
     private let session: URLSession
 
@@ -38,7 +45,7 @@ final class ImageCacheService {
     // MARK: - Public Methods
 
     /// Fetch image from cache or network
-    func fetchImage(url: URL) async throws -> NSImage {
+    func fetchImage(url: URL) async throws -> PlatformImage {
         // Check memory cache first
         if let cachedImage = memoryCache.object(forKey: url.absoluteString as NSString) {
             print("✅ ImageCache: Found in memory cache - \(url.lastPathComponent)")
@@ -49,7 +56,7 @@ final class ImageCacheService {
         let diskPath = diskCachePath(for: url)
         if FileManager.default.fileExists(atPath: diskPath.path) {
             if let data = try? Data(contentsOf: diskPath),
-               let image = NSImage(data: data) {
+               let image = PlatformImage.from(data: data) {
                 print("✅ ImageCache: Found in disk cache - \(url.lastPathComponent)")
                 memoryCache.setObject(image, forKey: url.absoluteString as NSString)
                 return image
@@ -74,7 +81,7 @@ final class ImageCacheService {
             throw OpenLibraryError.invalidResponse
         }
 
-        guard let image = NSImage(data: data) else {
+        guard let image = PlatformImage.from(data: data) else {
             print("❌ ImageCache: Failed to create image from data (\(data.count) bytes) - \(url.lastPathComponent)")
             throw OpenLibraryError.parsingError(NSError(domain: "ImageCache", code: -1, userInfo: [
                 NSLocalizedDescriptionKey: "Failed to decode image data"
@@ -101,7 +108,7 @@ final class ImageCacheService {
     }
 
     /// Cache an image for the given URL
-    func cacheImage(_ image: NSImage, for url: URL, originalData: Data? = nil) {
+    func cacheImage(_ image: PlatformImage, for url: URL, originalData: Data? = nil) {
         // Memory cache
         memoryCache.setObject(image, forKey: url.absoluteString as NSString)
 
@@ -111,12 +118,23 @@ final class ImageCacheService {
             // Save in original format (JPEG/PNG/etc)
             try? originalData.write(to: diskPath)
             print("💾 ImageCache: Saved to disk in original format (\(originalData.count) bytes) - \(url.lastPathComponent)")
-        } else if let tiffData = image.tiffRepresentation,
-                  let bitmapRep = NSBitmapImageRep(data: tiffData),
-                  let pngData = bitmapRep.representation(using: .png, properties: [:]) {
-            // Convert to PNG for better compatibility
-            try? pngData.write(to: diskPath)
-            print("💾 ImageCache: Saved to disk as PNG (\(pngData.count) bytes) - \(url.lastPathComponent)")
+        } else {
+            // Platform-specific image conversion for disk cache
+            #if canImport(AppKit)
+            if let tiffData = image.tiffRepresentation,
+                      let bitmapRep = NSBitmapImageRep(data: tiffData),
+                      let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+                try? pngData.write(to: diskPath)
+                print("💾 ImageCache: Saved to disk as PNG (\(pngData.count) bytes) - \(url.lastPathComponent)")
+            }
+            #endif
+
+            #if canImport(UIKit)
+            if let pngData = image.pngData() {
+                try? pngData.write(to: diskPath)
+                print("💾 ImageCache: Saved to disk as PNG (\(pngData.count) bytes) - \(url.lastPathComponent)")
+            }
+            #endif
         }
     }
 

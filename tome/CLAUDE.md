@@ -9,4 +9,11 @@
 |----|------|---|-------|------|
 | #2728 | 9:31 PM | 🔴 | Replaced ContentView template code with NavigationRootView | ~170 |
 | #2727 | " | 🔵 | ContentView uses template code with undefined Item type | ~162 |
+
+### Feb 11, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3153 | 11:23 PM | 🔵 | iOS Entitlements Already Configured | ~178 |
+| #3146 | 11:22 PM | 🔵 | Info.plist Contains iOS Configuration | ~128 |
 </claude-mem-context>

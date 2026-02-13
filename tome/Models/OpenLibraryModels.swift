@@ -10,7 +10,7 @@ struct OpenLibrarySearchResponse: Codable {
 }
 
 /// Individual book document in search results
-struct BookDocument: Codable, Equatable, Identifiable {
+struct BookDocument: Codable, Equatable, Identifiable, Hashable {
     let key: String
     let title: String
     let authorName: [String]?

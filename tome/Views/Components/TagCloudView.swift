@@ -137,6 +137,7 @@ struct TagChip: View {
 /// Color picker for creating new tags
 struct TagColorPicker: View {
     @Binding var selectedColor: String
+    var showCustomColorPicker: Bool = true
 
     private let colors: [String] = [
         // Refined palette - softer, more sophisticated colors
@@ -159,43 +160,48 @@ struct TagColorPicker: View {
     ]
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
-            ForEach(colors, id: \.self) { color in
-                Circle()
-                    .fill(Color(hex: color) ?? .blue)
-                    .frame(width: 30, height: 30)
-                    .overlay {
-                        if selectedColor == color {
-                            Circle()
-                                .strokeBorder(.white, lineWidth: 2)
-                                .frame(width: 26, height: 26)
-                            Image(systemName: "checkmark")
-                                .font(.caption2)
-                                .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 12) {
+            // Preset colors grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
+                ForEach(colors, id: \.self) { color in
+                    Circle()
+                        .fill(Color(hex: color) ?? .blue)
+                        .frame(width: 30, height: 30)
+                        .overlay {
+                            if selectedColor == color {
+                                Circle()
+                                    .strokeBorder(.white, lineWidth: 2)
+                                    .frame(width: 26, height: 26)
+                                Image(systemName: "checkmark")
+                                    .font(.caption2)
+                                    .foregroundStyle(.white)
+                            }
                         }
-                    }
-                    .onTapGesture {
-                        selectedColor = color
-                    }
+                        .onTapGesture {
+                            selectedColor = color
+                        }
+                }
+            }
+            
+            // Custom color picker (platform-adaptive)
+            if showCustomColorPicker {
+                Divider()
+                    .padding(.vertical, 4)
+                
+                PlatformColorPicker(
+                    "Custom Color",
+                    selection: Binding(
+                        get: {
+                            Color(hex: selectedColor) ?? .blue
+                        },
+                        set: { newColor in
+                            selectedColor = newColor.toHex()
+                        }
+                    ),
+                    supportsOpacity: false
+                )
             }
         }
-    }
-}
-
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
-
-        let red = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let green = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let blue = Double(rgb & 0x0000FF) / 255.0
-
-        self.init(red: red, green: green, blue: blue)
     }
 }
 
@@ -226,9 +232,15 @@ extension Color {
         }
 
         VStack(alignment: .leading) {
-            Text("Color Picker")
+            Text("Color Picker (Preset Only)")
                 .font(.headline)
-            TagColorPicker(selectedColor: .constant("#007AFF"))
+            TagColorPicker(selectedColor: .constant("#007AFF"), showCustomColorPicker: false)
+        }
+        
+        VStack(alignment: .leading) {
+            Text("Color Picker (With Custom)")
+                .font(.headline)
+            TagColorPicker(selectedColor: .constant("#007AFF"), showCustomColorPicker: true)
         }
     }
     .padding()
