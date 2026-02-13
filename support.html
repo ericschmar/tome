@@ -1,333 +1,404 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tome - Support</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tome - Support</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+            }
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 60px 40px;
-            text-align: center;
-        }
-
-        .app-icon {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 20px;
-            background: white;
-            border-radius: 26px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 64px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .tagline {
-            font-size: 1.2em;
-            opacity: 0.95;
-            font-weight: 300;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        h2 {
-            color: #667eea;
-            font-size: 1.8em;
-            margin: 30px 0 15px 0;
-            font-weight: 600;
-        }
-
-        h2:first-child {
-            margin-top: 0;
-        }
-
-        h3 {
-            color: #764ba2;
-            font-size: 1.3em;
-            margin: 25px 0 10px 0;
-            font-weight: 600;
-        }
-
-        p {
-            margin-bottom: 15px;
-            color: #555;
-        }
-
-        ul {
-            margin-left: 20px;
-            margin-bottom: 20px;
-        }
-
-        li {
-            margin-bottom: 10px;
-            color: #555;
-        }
-
-        .faq-item {
-            margin-bottom: 25px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-
-        .faq-question {
-            font-weight: 600;
-            color: #333;
-            font-size: 1.1em;
-            margin-bottom: 10px;
-        }
-
-        .faq-answer {
-            color: #555;
-            margin: 0;
-        }
-
-        .contact-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-top: 30px;
-            text-align: center;
-        }
-
-        .contact-box h2 {
-            color: white;
-            margin-top: 0;
-        }
-
-        .contact-box p {
-            color: white;
-            margin-bottom: 20px;
-        }
-
-        .email-link {
-            display: inline-block;
-            background: white;
-            color: #667eea;
-            padding: 12px 30px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .email-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .footer {
-            text-align: center;
-            padding: 30px;
-            color: #999;
-            font-size: 0.9em;
-        }
-
-        .platform-badge {
-            display: inline-block;
-            background: #f0f0f0;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            margin: 0 5px;
-            color: #666;
-        }
-
-        @media (max-width: 600px) {
             .header {
-                padding: 40px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 60px 40px;
+                text-align: center;
+            }
+
+            .app-icon {
+                width: 120px;
+                height: 120px;
+                margin: 0 auto 20px;
+                background: white;
+                border-radius: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 64px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             }
 
             h1 {
-                font-size: 2em;
+                font-size: 2.5em;
+                margin-bottom: 10px;
+                font-weight: 700;
+            }
+
+            .tagline {
+                font-size: 1.2em;
+                opacity: 0.95;
+                font-weight: 300;
             }
 
             .content {
-                padding: 30px 20px;
+                padding: 40px;
             }
 
             h2 {
-                font-size: 1.5em;
+                color: #667eea;
+                font-size: 1.8em;
+                margin: 30px 0 15px 0;
+                font-weight: 600;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="app-icon">📚</div>
-            <h1>Tome</h1>
-            <p class="tagline">Your Personal Book Library Manager</p>
-            <div style="margin-top: 20px;">
-                <span class="platform-badge">iOS</span>
-                <span class="platform-badge">macOS</span>
-            </div>
-        </div>
 
-        <div class="content">
-            <h2>About Tome</h2>
-            <p>
-                Tome is a beautiful and powerful book library management app designed to help you organize, 
-                track, and explore your personal book collection. Whether you're managing a few favorites 
-                or an extensive library, Tome makes it easy to keep track of what you're reading, what you 
-                want to read, and what you've already finished.
-            </p>
+            h2:first-child {
+                margin-top: 0;
+            }
 
-            <h2>Features</h2>
-            <ul>
-                <li><strong>Comprehensive Book Database:</strong> Search and add books from extensive online catalogs</li>
-                <li><strong>Reading Status Tracking:</strong> Organize books by Currently Reading, To Read, and Read</li>
-                <li><strong>Smart Organization:</strong> Use tags and categories to organize your library your way</li>
-                <li><strong>Cross-Platform Sync:</strong> Access your library on both iOS and macOS</li>
-                <li><strong>Native Experience:</strong> Beautiful native interface designed specifically for Apple platforms</li>
-                <li><strong>Manual Entry:</strong> Add books manually when they're not available in the database</li>
-                <li><strong>Bulk Import:</strong> Quickly add multiple books to your library</li>
-            </ul>
+            h3 {
+                color: #764ba2;
+                font-size: 1.3em;
+                margin: 25px 0 10px 0;
+                font-weight: 600;
+            }
 
-            <h2>Getting Started</h2>
-            <h3>Adding Your First Book</h3>
-            <p>
-                To add a book to your library, simply tap the "+" button and choose one of three options:
-            </p>
-            <ul>
-                <li><strong>Search:</strong> Find books by title, author, or ISBN</li>
-                <li><strong>Manual Entry:</strong> Enter book details manually</li>
-                <li><strong>Bulk Import:</strong> Add multiple books at once</li>
-            </ul>
+            p {
+                margin-bottom: 15px;
+                color: #555;
+            }
 
-            <h3>Organizing Your Library</h3>
-            <p>
-                Use the sidebar to navigate between different views of your library:
-            </p>
-            <ul>
-                <li><strong>All Books:</strong> View your entire collection</li>
-                <li><strong>Currently Reading:</strong> Track books you're actively reading</li>
-                <li><strong>To Read:</strong> Your reading wishlist</li>
-                <li><strong>Read:</strong> Books you've finished</li>
-                <li><strong>Tags:</strong> Custom organization categories</li>
-            </ul>
+            ul {
+                margin-left: 20px;
+                margin-bottom: 20px;
+            }
 
-            <h2>Frequently Asked Questions</h2>
-            
-            <div class="faq-item">
-                <div class="faq-question">How do I sync my library between devices?</div>
-                <div class="faq-answer">
-                    Tome uses iCloud to automatically sync your library between all your devices. 
-                    Make sure you're signed in with the same Apple ID on all devices and have iCloud 
-                    enabled for Tome.
+            li {
+                margin-bottom: 10px;
+                color: #555;
+            }
+
+            .faq-item {
+                margin-bottom: 25px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border-left: 4px solid #667eea;
+            }
+
+            .faq-question {
+                font-weight: 600;
+                color: #333;
+                font-size: 1.1em;
+                margin-bottom: 10px;
+            }
+
+            .faq-answer {
+                color: #555;
+                margin: 0;
+            }
+
+            .contact-box {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                border-radius: 12px;
+                margin-top: 30px;
+                text-align: center;
+            }
+
+            .contact-box h2 {
+                color: white;
+                margin-top: 0;
+            }
+
+            .contact-box p {
+                color: white;
+                margin-bottom: 20px;
+            }
+
+            .email-link {
+                display: inline-block;
+                background: white;
+                color: #667eea;
+                padding: 12px 30px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-weight: 600;
+                transition:
+                    transform 0.2s,
+                    box-shadow 0.2s;
+            }
+
+            .email-link:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            }
+
+            .footer {
+                text-align: center;
+                padding: 30px;
+                color: #999;
+                font-size: 0.9em;
+            }
+
+            .platform-badge {
+                display: inline-block;
+                background: #f0f0f0;
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                margin: 0 5px;
+                color: #666;
+            }
+
+            @media (max-width: 600px) {
+                .header {
+                    padding: 40px 20px;
+                }
+
+                h1 {
+                    font-size: 2em;
+                }
+
+                .content {
+                    padding: 30px 20px;
+                }
+
+                h2 {
+                    font-size: 1.5em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="app-icon">📚</div>
+                <h1>Tome</h1>
+                <p class="tagline">Your Personal Book Library Manager</p>
+                <div style="margin-top: 20px">
+                    <span class="platform-badge">iOS</span>
+                    <span class="platform-badge">macOS</span>
                 </div>
             </div>
 
-            <div class="faq-item">
-                <div class="faq-question">Can I export my book collection?</div>
-                <div class="faq-answer">
-                    Yes! You can export your library data from the Settings menu. This creates a 
-                    backup of your collection that you can keep for your records.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">Where does the book information come from?</div>
-                <div class="faq-answer">
-                    Tome searches comprehensive online book databases including Open Library to provide 
-                    accurate book information, cover images, and metadata.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">What if I can't find a book in the search?</div>
-                <div class="faq-answer">
-                    You can always add books manually! Use the "Manual Entry" option to input all the 
-                    book details yourself, including the title, author, ISBN, and other information.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">Is my data private?</div>
-                <div class="faq-answer">
-                    Absolutely. Your library data is stored locally on your device and synced through 
-                    your personal iCloud account. We don't collect, access, or share any of your data.
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">How do I delete a book from my library?</div>
-                <div class="faq-answer">
-                    Select the book you want to remove and use the delete option in the book's detail 
-                    view. On iOS, you can also swipe left on a book in the list view to delete it.
-                </div>
-            </div>
-
-            <h2>System Requirements</h2>
-            <ul>
-                <li><strong>iOS:</strong> Requires iOS 17.0 or later</li>
-                <li><strong>macOS:</strong> Requires macOS 14.0 or later</li>
-                <li><strong>iCloud:</strong> Recommended for syncing between devices</li>
-            </ul>
-
-            <h2>Privacy Policy</h2>
-            <p>
-                Tome is committed to protecting your privacy. We do not collect, store, or share any 
-                personal information or data about your book library. All data is stored locally on 
-                your device and optionally synced through your personal iCloud account, which is 
-                protected by Apple's security measures.
-            </p>
-            <p>
-                When you search for books, queries are sent to third-party book database services 
-                (such as Open Library) to retrieve book information. These searches are anonymous and 
-                not associated with your identity.
-            </p>
-
-            <div class="contact-box">
-                <h2>Need Help?</h2>
+            <div class="content">
+                <h2>About Tome</h2>
                 <p>
-                    If you have questions, feedback, or need assistance, we're here to help!
+                    Tome is a beautiful and powerful book library management app
+                    designed to help you organize, track, and explore your
+                    personal book collection. Whether you're managing a few
+                    favorites or an extensive library, Tome makes it easy to
+                    keep track of what you're reading, what you want to read,
+                    and what you've already finished.
                 </p>
-                <a href="mailto:support@example.com" class="email-link">Contact Support</a>
+
+                <h2>Features</h2>
+                <ul>
+                    <li>
+                        <strong>Comprehensive Book Database:</strong> Search and
+                        add books from extensive online catalogs
+                    </li>
+                    <li>
+                        <strong>Reading Status Tracking:</strong> Organize books
+                        by Currently Reading, To Read, and Read
+                    </li>
+                    <li>
+                        <strong>Smart Organization:</strong> Use tags and
+                        categories to organize your library your way
+                    </li>
+                    <li>
+                        <strong>Cross-Platform Sync:</strong> Access your
+                        library on both iOS and macOS
+                    </li>
+                    <li>
+                        <strong>Native Experience:</strong> Beautiful native
+                        interface designed specifically for Apple platforms
+                    </li>
+                    <li>
+                        <strong>Manual Entry:</strong> Add books manually when
+                        they're not available in the database
+                    </li>
+                    <li>
+                        <strong>Bulk Import:</strong> Quickly add multiple books
+                        to your library
+                    </li>
+                </ul>
+
+                <h2>Getting Started</h2>
+                <h3>Adding Your First Book</h3>
+                <p>
+                    To add a book to your library, simply tap the "+" button and
+                    choose one of three options:
+                </p>
+                <ul>
+                    <li>
+                        <strong>Search:</strong> Find books by title, author, or
+                        ISBN
+                    </li>
+                    <li>
+                        <strong>Manual Entry:</strong> Enter book details
+                        manually
+                    </li>
+                    <li>
+                        <strong>Bulk Import:</strong> Add multiple books at once
+                    </li>
+                </ul>
+
+                <h3>Organizing Your Library</h3>
+                <p>
+                    Use the sidebar to navigate between different views of your
+                    library:
+                </p>
+                <ul>
+                    <li>
+                        <strong>All Books:</strong> View your entire collection
+                    </li>
+                    <li>
+                        <strong>Currently Reading:</strong> Track books you're
+                        actively reading
+                    </li>
+                    <li><strong>To Read:</strong> Your reading wishlist</li>
+                    <li><strong>Read:</strong> Books you've finished</li>
+                    <li>
+                        <strong>Tags:</strong> Custom organization categories
+                    </li>
+                </ul>
+
+                <h2>Frequently Asked Questions</h2>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        How do I sync my library between devices?
+                    </div>
+                    <div class="faq-answer">
+                        Tome uses iCloud to automatically sync your library
+                        between all your devices. Make sure you're signed in
+                        with the same Apple ID on all devices and have iCloud
+                        enabled for Tome.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        Can I export my book collection?
+                    </div>
+                    <div class="faq-answer">
+                        Yes! You can export your library data from the Settings
+                        menu. This creates a backup of your collection that you
+                        can keep for your records.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        Where does the book information come from?
+                    </div>
+                    <div class="faq-answer">
+                        Tome searches comprehensive online book databases
+                        including Open Library to provide accurate book
+                        information, cover images, and metadata.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        What if I can't find a book in the search?
+                    </div>
+                    <div class="faq-answer">
+                        You can always add books manually! Use the "Manual
+                        Entry" option to input all the book details yourself,
+                        including the title, author, ISBN, and other
+                        information.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">Is my data private?</div>
+                    <div class="faq-answer">
+                        Absolutely. Your library data is stored locally on your
+                        device and synced through your personal iCloud account.
+                        We don't collect, access, or share any of your data.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        How do I delete a book from my library?
+                    </div>
+                    <div class="faq-answer">
+                        Select the book you want to remove and use the delete
+                        option in the book's detail view. On iOS, you can also
+                        swipe left on a book in the list view to delete it.
+                    </div>
+                </div>
+
+                <h2>System Requirements</h2>
+                <ul>
+                    <li><strong>iOS:</strong> Requires iOS 17.0 or later</li>
+                    <li>
+                        <strong>macOS:</strong> Requires macOS 14.0 or later
+                    </li>
+                    <li>
+                        <strong>iCloud:</strong> Recommended for syncing between
+                        devices
+                    </li>
+                </ul>
+
+                <h2>Privacy Policy</h2>
+                <p>
+                    Tome is committed to protecting your privacy. We do not
+                    collect, store, or share any personal information or data
+                    about your book library. All data is stored locally on your
+                    device and optionally synced through your personal iCloud
+                    account, which is protected by Apple's security measures.
+                </p>
+                <p>
+                    When you search for books, queries are sent to third-party
+                    book database services (such as Open Library) to retrieve
+                    book information. These searches are anonymous and not
+                    associated with your identity.
+                </p>
+
+                <div class="contact-box">
+                    <h2>Need Help?</h2>
+                    <p>
+                        If you have questions, feedback, or need assistance,
+                        we're here to help!
+                    </p>
+                    <a href="mailto:ericschmar@gmail.com" class="email-link"
+                        >Contact Support</a
+                    >
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>&copy; 2026 Tome. All rights reserved.</p>
+                <p>Made with ❤️ for book lovers everywhere</p>
             </div>
         </div>
-
-        <div class="footer">
-            <p>&copy; 2026 Tome. All rights reserved.</p>
-            <p>Made with ❤️ for book lovers everywhere</p>
-        </div>
-    </div>
-</body>
+    </body>
 </html>
