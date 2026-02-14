@@ -15,11 +15,11 @@
 /* Begin PBXFileReference section */
 		533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLATFORM_COLOR_PICKER_GUIDE.md; sourceTree = "<group>"; };
 		533FAFB52F3EC71800EFE0CE /* tome_icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = tome_icon.icon; sourceTree = "<group>"; };
-		5381F6292F3C17B800D3F187 /* tome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tome.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5381F6292F3C17B800D3F187 /* Tome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tome.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		5381F6362F3C17B900D3F187 /* Exceptions for "tome" folder in "tome" target */ = {
+		5381F6362F3C17B900D3F187 /* Exceptions for "Tome" folder in "Tome" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				CLAUDE.md,
@@ -31,17 +31,17 @@
 				Views/Components/CLAUDE.md,
 				Views/Sidebar/CLAUDE.md,
 			);
-			target = 5381F6282F3C17B800D3F187 /* tome */;
+			target = 5381F6282F3C17B800D3F187 /* Tome */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		5381F62B2F3C17B800D3F187 /* tome */ = {
+		5381F62B2F3C17B800D3F187 /* Tome */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				5381F6362F3C17B900D3F187 /* Exceptions for "tome" folder in "tome" target */,
+				5381F6362F3C17B900D3F187 /* Exceptions for "Tome" folder in "Tome" target */,
 			);
-			path = tome;
+			path = Tome;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -62,7 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				533FAFB52F3EC71800EFE0CE /* tome_icon.icon */,
-				5381F62B2F3C17B800D3F187 /* tome */,
+				5381F62B2F3C17B800D3F187 /* Tome */,
 				5381F62A2F3C17B800D3F187 /* Products */,
 				533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */,
 			);
@@ -71,7 +71,7 @@
 		5381F62A2F3C17B800D3F187 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5381F6292F3C17B800D3F187 /* tome.app */,
+				5381F6292F3C17B800D3F187 /* Tome.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -79,9 +79,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		5381F6282F3C17B800D3F187 /* tome */ = {
+		5381F6282F3C17B800D3F187 /* Tome */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5381F6372F3C17B900D3F187 /* Build configuration list for PBXNativeTarget "tome" */;
+			buildConfigurationList = 5381F6372F3C17B900D3F187 /* Build configuration list for PBXNativeTarget "Tome" */;
 			buildPhases = (
 				5381F6252F3C17B800D3F187 /* Sources */,
 				5381F6262F3C17B800D3F187 /* Frameworks */,
@@ -92,14 +92,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				5381F62B2F3C17B800D3F187 /* tome */,
+				5381F62B2F3C17B800D3F187 /* Tome */,
 			);
-			name = tome;
+			name = Tome;
 			packageProductDependencies = (
 				5369DD962F3D13F500214A2C /* ColorSelector */,
 			);
 			productName = tome;
-			productReference = 5381F6292F3C17B800D3F187 /* tome.app */;
+			productReference = 5381F6292F3C17B800D3F187 /* Tome.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -134,7 +134,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				5381F6282F3C17B800D3F187 /* tome */,
+				5381F6282F3C17B800D3F187 /* Tome */,
 			);
 		};
 /* End PBXProject section */
@@ -168,25 +168,28 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = tome_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = tome/tome.entitlements;
+				AUTOMATION_APPLE_EVENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = Tome/tome.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 89ZYL573HH;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = tome/Info.plist;
+				INFOPLIST_FILE = Tome/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -203,9 +206,18 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ericschmar.tome;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ericschmar.Tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.ericschmar.tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.ericschmar.tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=xros*]" = com.ericschmar.tome;
+				PRODUCT_NAME = "${TARGET_NAME}";
 				REGISTER_APP_GROUPS = YES;
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
@@ -225,25 +237,28 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = tome_icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = tome/tome.entitlements;
+				AUTOMATION_APPLE_EVENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = Tome/tome.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 89ZYL573HH;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
-				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = tome/Info.plist;
+				INFOPLIST_FILE = Tome/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -260,9 +275,18 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ericschmar.tome;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.ericschmar.Tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.ericschmar.tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.ericschmar.tome;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=xros*]" = com.ericschmar.tome;
+				PRODUCT_NAME = "${TARGET_NAME}";
 				REGISTER_APP_GROUPS = YES;
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
@@ -402,7 +426,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		5381F6372F3C17B900D3F187 /* Build configuration list for PBXNativeTarget "tome" */ = {
+		5381F6372F3C17B900D3F187 /* Build configuration list for PBXNativeTarget "Tome" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5381F6382F3C17B900D3F187 /* Debug */,
