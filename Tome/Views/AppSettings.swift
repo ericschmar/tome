@@ -186,4 +186,21 @@ enum BookLanguage: String, CaseIterable, Identifiable {
             return "🇸🇦"
         }
     }
+
+    /// Convert 2-letter code to 3-letter ISO 639-2/B code
+    var threeLetterCode: String {
+        switch self {
+        case .english: return "eng"
+        case .spanish: return "spa"
+        case .french: return "fre"
+        case .german: return "ger"
+        case .italian: return "ita"
+        case .portuguese: return "por"
+        case .chinese: return "chi"
+        case .japanese: return "jpn"
+        case .korean: return "kor"
+        case .russian: return "rus"
+        case .arabic: return "ara"
+        }
+    }
 }

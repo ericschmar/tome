@@ -30,8 +30,15 @@ struct BulkAddBooksView: View {
                 
                 // Search results horizontal scroll
                 if viewModel.isSearching {
-                    ProgressView(viewModel.isISBNQuery ? "Looking up ISBN..." : "Searching...")
-                        .frame(height: 240)
+                    VStack(spacing: 12) {
+                        ProgressView(viewModel.isISBNQuery ? "Looking up ISBN..." : "Searching...")
+
+                        Button("Cancel Search") {
+                            viewModel.cancelSearch()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(height: 240)
                 } else if !viewModel.searchResults.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 36) {
@@ -184,7 +191,6 @@ struct BulkAddBooksView: View {
                 Button("Add \(viewModel.selectedBooks.count) Book(s)") {
                     addBooksToLibrary()
                 }
-                .keyboardShortcut(.defaultAction)
                 .disabled(viewModel.selectedBooks.isEmpty || viewModel.isAdding)
             }
             .padding()
@@ -210,8 +216,10 @@ struct BulkAddBooksView: View {
             }
         }
         .onAppear {
-            // Focus search field on appear
-            isSearchFocused = true
+            // Delay focus slightly to ensure view is fully presented
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isSearchFocused = true
+            }
         }
     }
     
@@ -314,57 +322,72 @@ final class BulkAddViewModel {
     var isSearching: Bool = false
     var hasSearched: Bool = false
     var isAdding: Bool = false
-    
+
     private let searchService = OpenLibraryService.shared
-    
+    private var searchTask: Task<Void, Never>?
+
     /// Check if the current query is an ISBN
     var isISBNQuery: Bool {
         let digitsOnly = searchQuery.filter { $0.isNumber }
         return digitsOnly.count == 10 || digitsOnly.count == 13
     }
-    
+
     func performSearch() async {
         guard !searchQuery.isEmpty else { return }
-        
+
         isSearching = true
         hasSearched = false
-        
-        do {
-            if isISBNQuery {
-                // ISBN lookup
-                let isbn = searchQuery.filter { $0.isNumber }
-                if let result = try await searchService.lookupByISBN(isbn) {
+
+        searchTask = Task {
+            do {
+                if isISBNQuery {
+                    // ISBN lookup
+                    let isbn = searchQuery.filter { $0.isNumber }
+                    let result = try await withTimeout(15.0) {
+                        try await self.searchService.lookupByISBN(isbn)
+                    }
+                    guard !Task.isCancelled else { return }
                     await MainActor.run {
-                        self.searchResults = [result]
+                        if let result = result {
+                            self.searchResults = [result]
+                        } else {
+                            self.searchResults = []
+                        }
                         self.isSearching = false
                         self.hasSearched = true
                     }
                 } else {
+                    // Regular search
+                    let results = try await withTimeout(15.0) {
+                        try await self.searchService.searchBooks(query: self.searchQuery)
+                    }
+                    guard !Task.isCancelled else { return }
                     await MainActor.run {
-                        self.searchResults = []
+                        self.searchResults = results
                         self.isSearching = false
                         self.hasSearched = true
                     }
                 }
-            } else {
-                // Regular search
-                let results = try await searchService.searchBooks(query: searchQuery)
+            } catch {
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
-                    self.searchResults = results
+                    self.searchResults = []
                     self.isSearching = false
                     self.hasSearched = true
                 }
+                print("Search error: \(error)")
             }
-        } catch {
-            await MainActor.run {
-                self.searchResults = []
-                self.isSearching = false
-                self.hasSearched = true
-            }
-            print("Search error: \(error)")
         }
+
+        await searchTask?.value
     }
-    
+
+    func cancelSearch() {
+        searchTask?.cancel()
+        searchTask = nil
+        isSearching = false
+    }
+
     func toggleSelection(_ book: BookDocument) {
         if let index = selectedBooks.firstIndex(where: { $0.key == book.key }) {
             selectedBooks.remove(at: index)
@@ -372,23 +395,45 @@ final class BulkAddViewModel {
             selectedBooks.append(book)
         }
     }
-    
+
     func isSelected(_ book: BookDocument) -> Bool {
         selectedBooks.contains(where: { $0.key == book.key })
     }
-    
+
     func removeBook(_ book: BookDocument) {
         selectedBooks.removeAll(where: { $0.key == book.key })
     }
-    
+
     func clearAll() {
         selectedBooks.removeAll()
     }
-    
+
     func clearSearch() {
         searchQuery = ""
         searchResults = []
         hasSearched = false
+    }
+
+    // MARK: - Timeout Helper
+
+    private func withTimeout<T>(_ timeout: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            // Add the actual operation
+            group.addTask {
+                try await operation()
+            }
+
+            // Add the timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw OpenLibraryError.timeout
+            }
+
+            // Return the first one to complete
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
     }
 }
 

@@ -7,5 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #3349 | 10:05 PM | 🔵 | App initializes with SwiftData ModelContainer and CloudKit integration | ~267 |
+| #3362 | 10:07 PM | 🔵 | Project has one existing SPM dependency: ColorSelector | ~170 |
 </claude-mem-context>

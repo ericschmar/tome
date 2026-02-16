@@ -15,6 +15,7 @@ struct EditBookView: View {
     @State private var publisher: String
     @State private var year: String
     @State private var pageCount: String
+    @State private var copyCount: String
     @State private var language: String
     @State private var description: String
 
@@ -27,6 +28,7 @@ struct EditBookView: View {
         _publisher = State(initialValue: book.publishers.first ?? "")
         _year = State(initialValue: book.firstPublishYear?.description ?? "")
         _pageCount = State(initialValue: book.pageCount?.description ?? "")
+        _copyCount = State(initialValue: book.copyCount.description)
         _language = State(initialValue: book.languages.first ?? "")
         _description = State(initialValue: book.bookDescription ?? "")
     }
@@ -71,6 +73,8 @@ struct EditBookView: View {
                     HStack {
                         TextField("Year", text: $year)
                         TextField("Pages", text: $pageCount)
+                        CopyCountInputView(copyCount: $copyCount)
+                            .frame(maxWidth: 80)
                     }
 
                     TextField("Language", text: $language)
@@ -147,6 +151,7 @@ struct EditBookView: View {
         book.publishers = publisher.isEmpty ? [] : [publisher]
         book.firstPublishYear = Int(year)
         book.pageCount = Int(pageCount)
+        book.copyCount = Int(copyCount) ?? 1
         book.languages = language.isEmpty ? [] : [language]
         book.bookDescription = description.isEmpty ? nil : description
         book.dateModified = Date()

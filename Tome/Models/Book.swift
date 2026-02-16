@@ -15,6 +15,7 @@ final class Book {
     var bookDescription: String?
     var publishers: [String] = []
     var pageCount: Int?
+    var copyCount: Int = 1
     var languages: [String] = []
     var subjects: [String] = []
     var openLibraryKey: String?
@@ -39,6 +40,7 @@ final class Book {
         bookDescription: String? = nil,
         publishers: [String] = [],
         pageCount: Int? = nil,
+        copyCount: Int = 1,
         languages: [String] = [],
         subjects: [String] = [],
         openLibraryKey: String? = nil,
@@ -60,6 +62,7 @@ final class Book {
         self.bookDescription = bookDescription
         self.publishers = publishers
         self.pageCount = pageCount
+        self.copyCount = copyCount
         self.languages = languages
         self.subjects = subjects
         self.openLibraryKey = openLibraryKey

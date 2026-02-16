@@ -52,6 +52,13 @@ enum BookContentSource: BookDisplayable {
         }
     }
 
+    var copyCount: Int? {
+        switch self {
+        case .library(let book): return book.copyCount
+        case .search: return nil
+        }
+    }
+
     var language: String? {
         switch self {
         case .library(let book): return book.language

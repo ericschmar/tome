@@ -57,7 +57,7 @@ struct LanguageBadge: View {
             .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    private var displayName: String {
+    var displayName: String {
         Self.languageNames[languageCode] ?? languageCode.uppercased()
     }
 

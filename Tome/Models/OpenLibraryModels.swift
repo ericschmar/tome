@@ -293,6 +293,7 @@ enum OpenLibraryError: Error, LocalizedError {
     case noResults
     case rateLimitExceeded
     case parsingError(Error)
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -308,6 +309,8 @@ enum OpenLibraryError: Error, LocalizedError {
             return "Rate limit exceeded. Please try again later."
         case .parsingError(let error):
             return "Failed to parse response: \(error.localizedDescription)"
+        case .timeout:
+            return "Request timed out. Please try again."
         }
     }
 }

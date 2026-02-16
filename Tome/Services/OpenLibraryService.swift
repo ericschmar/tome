@@ -27,6 +27,7 @@ final class OpenLibraryService {
             memoryCapacity: 20 * 1024 * 1024,  // 20 MB
             diskCapacity: 100 * 1024 * 1024    // 100 MB
         )
+        configuration.httpAdditionalHeaders?.updateValue("Tome (ericschmar@gmail.com)", forKey: "User-Agent")
         self.session = URLSession(configuration: configuration)
 
         let jsonDecoder = JSONDecoder()

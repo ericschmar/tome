@@ -323,15 +323,4 @@ enum MatchType {
     }
 }
 
-// MARK: - String Extension
 
-extension String {
-    /// Normalize string for search: lowercase, trim, remove diacritics
-    func normalizedForSearch() -> String {
-        self.lowercased()
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: .diacriticInsensitive, locale: .current)
-            .components(separatedBy: .punctuationCharacters)
-            .joined()
-    }
-}

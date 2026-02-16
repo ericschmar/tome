@@ -57,6 +57,7 @@ struct AddBookSearchView: View {
     @Bindable var viewModel: BookSearchViewModel
     var onResultSelected: (BookDocument) -> Void
     @Environment(NavigationState.self) private var navigationState
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         Group {
@@ -87,6 +88,13 @@ struct AddBookSearchView: View {
             text: $viewModel.searchQuery,
             prompt: "Search by title, author, or ISBN"
         )
+        .focused($isSearchFocused)
+        .onAppear {
+            // Delay focus slightly to ensure view is fully presented
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isSearchFocused = true
+            }
+        }
         .onSubmit(of: .search) {
             Task {
                 await performSearch()
@@ -105,9 +113,15 @@ struct AddBookSearchView: View {
     @ViewBuilder
     private var contentView: some View {
         if viewModel.isLoading {
-            VStack {
+            VStack(spacing: 12) {
                 ProgressView(isISBNQuery ? "Looking up ISBN..." : "Searching...")
                     .padding(.top, 40)
+
+                Button("Cancel Search") {
+                    viewModel.cancelSearch()
+                }
+                .buttonStyle(.bordered)
+
                 Spacer()
             }
         } else if let error = viewModel.errorMessage {
@@ -240,6 +254,7 @@ struct AddBookManualView: View {
     @State private var publisher = ""
     @State private var year = ""
     @State private var pageCount = ""
+    @State private var copyCount = "1"
     @State private var description = ""
     @State private var coverImageData: Data?
     @State private var showingImagePicker = false
@@ -248,6 +263,12 @@ struct AddBookManualView: View {
     @State private var isLoadingImage = false
     @State private var imageLoadError: String?
     @FocusState private var focusedField: Field?
+
+    // Camera and OCR states
+    @State private var showingCamera = false
+    @State private var showingOCRProgress = false
+    @State private var ocrError: String?
+    @State private var scanResult: BookCoverScanResult?
 
     var body: some View {
         Form {
@@ -333,7 +354,7 @@ struct AddBookManualView: View {
                     }
                     .frame(maxWidth: .infinity)
                     
-                    // Right column: Year and Pages
+                    // Right column: Year, Pages, and Copies
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 4) {
                             Label("Year", systemImage: "calendar")
@@ -343,7 +364,7 @@ struct AddBookManualView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .focused($focusedField, equals: .year)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Label("Pages", systemImage: "doc.text")
                                 .font(.caption.weight(.medium))
@@ -351,6 +372,14 @@ struct AddBookManualView: View {
                             TextField("000", text: $pageCount)
                                 .textFieldStyle(.roundedBorder)
                                 .focused($focusedField, equals: .pageCount)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Copies", systemImage: "doc.on.doc")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                            CopyCountInputView(copyCount: $copyCount)
+                                .focused($focusedField, equals: .copyCount)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -388,8 +417,16 @@ struct AddBookManualView: View {
                                 .focused($focusedField, equals: .pageCount)
                                 .keyboardType(.numberPad)
                         }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Copies", systemImage: "doc.on.doc")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                            CopyCountInputView(copyCount: $copyCount)
+                                .focused($focusedField, equals: .copyCount)
+                        }
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Label("Publisher", systemImage: "building.2")
                             .font(.caption.weight(.medium))
@@ -474,21 +511,31 @@ struct AddBookManualView: View {
         VStack(spacing: 12) {
             // Cover Preview
             Menu {
+                // Camera option (iOS only)
+                #if os(iOS)
+                Button {
+                    showingCamera = true
+                } label: {
+                    Label("Take Photo", systemImage: "camera.viewfinder")
+                }
+                .disabled(!CameraAccess.isAvailable)
+                #endif
+
                 Button {
                     showingImagePicker = true
                 } label: {
                     Label("Choose from Photos", systemImage: "photo.on.rectangle")
                 }
-                
+
                 Button {
                     showingURLInput = true
                 } label: {
                     Label("Load from URL", systemImage: "link")
                 }
-                
+
                 if coverImageData != nil {
                     Divider()
-                    
+
                     Button(role: .destructive) {
                         withAnimation {
                             coverImageData = nil
@@ -577,6 +624,49 @@ struct AddBookManualView: View {
                 .background(Color.orange.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+
+            // OCR prompt button
+            #if os(iOS)
+            if coverImageData != nil && (title.isEmpty || authors.isEmpty) {
+                Button {
+                    Task { await performOCR() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "text.viewfinder")
+                        Text("Auto-fill title and author from this photo?")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.borderless)
+                .disabled(showingOCRProgress)
+            }
+
+            // OCR progress
+            if showingOCRProgress {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Extracting text...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // OCR error
+            if let error = ocrError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            #endif
         }
         .frame(maxWidth: .infinity)
         .fileImporter(
@@ -600,8 +690,13 @@ struct AddBookManualView: View {
                 }
             )
         }
+        #if os(iOS)
+        .sheet(isPresented: $showingCamera) {
+            BookCoverCameraView(capturedImageData: $coverImageData)
+        }
+        #endif
     }
-    
+
     private func handleImageSelection(_ result: Result<[URL], Error>) {
         imageLoadError = nil
         
@@ -637,7 +732,134 @@ struct AddBookManualView: View {
             imageLoadError = "Failed to select image: \(error.localizedDescription)"
         }
     }
-    
+
+    #if os(iOS)
+    // MARK: - OCR Handling
+
+    private func performOCR() async {
+        showingOCRProgress = true
+        ocrError = nil
+
+        guard let imageData = coverImageData,
+              let platformImage = PlatformImage.from(data: imageData) else {
+            ocrError = "Failed to load image"
+            showingOCRProgress = false
+            return
+        }
+
+        do {
+            // Try barcode/ISBN detection first (faster, more accurate)
+            if let isbn = try await BookCoverScanner.shared.detectBarcode(from: platformImage) {
+                await lookupBookByISBN(isbn)
+                showingOCRProgress = false
+                return
+            }
+
+            // Fallback to OCR
+            let ocrResult = try await BookCoverScanner.shared.extractText(from: platformImage)
+
+            if let bookInfo = BookCoverScanner.shared.parseBookInfo(from: ocrResult.text) {
+                await MainActor.run {
+                    title = bookInfo.title
+                    authors = bookInfo.authors.joined(separator: ", ")
+                    if let isbn = bookInfo.isbn {
+                        self.isbn = isbn
+                    }
+                    showingOCRProgress = false
+                }
+            } else {
+                await MainActor.run {
+                    ocrError = "Could not detect title and author. Please enter manually."
+                    showingOCRProgress = false
+                }
+            }
+        } catch {
+            await MainActor.run {
+                ocrError = "Failed to extract text: \(error.localizedDescription)"
+                showingOCRProgress = false
+            }
+        }
+    }
+
+    private func lookupBookByISBN(_ isbn: String) async {
+        // Use existing OpenLibraryService to fetch book by ISBN
+        let openLibraryService = OpenLibraryService.shared
+
+        do {
+            let doc = try await openLibraryService.lookupByISBN(isbn)
+
+            guard let doc = doc else {
+                await MainActor.run {
+                    ocrError = "Book not found for ISBN: \(isbn)"
+                }
+                return
+            }
+
+            await MainActor.run {
+                // Extract title
+                if !doc.title.isEmpty {
+                    title = doc.title
+                }
+
+                // Extract authors
+                if let authorNames = doc.authorName, !authorNames.isEmpty {
+                    authors = authorNames.joined(separator: ", ")
+                }
+
+                // Set ISBN
+                self.isbn = isbn
+
+                // Extract other metadata if available
+                if let year = doc.firstPublishYear {
+                    self.year = String(year)
+                }
+
+                if let publishers = doc.publisher, !publishers.isEmpty {
+                    publisher = publishers[0]
+                }
+
+                if let pages = doc.numberOfPagesMedian {
+                    self.pageCount = String(pages)
+                }
+
+                // Try to fetch cover image
+                if let coverID = doc.coverI {
+                    Task {
+                        await fetchOpenLibraryCover(coverID: coverID)
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run {
+                // If lookup fails, show partial success with ISBN
+                self.isbn = isbn
+                ocrError = "ISBN found but lookup failed. ISBN: \(isbn)"
+            }
+        }
+    }
+
+    private func fetchOpenLibraryCover(coverID: Int) async {
+        guard let coverURL = URL(string: "https://covers.openlibrary.org/b/id/\(coverID)-L.jpg") else {
+            return
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: coverURL)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                return
+            }
+
+            await MainActor.run {
+                coverImageData = data
+            }
+        } catch {
+            // Silently fail on cover image fetch
+        }
+    }
+    #endif
+
     // MARK: - Validation
     
     private var isFormValid: Bool {
@@ -647,7 +869,8 @@ struct AddBookManualView: View {
     
     private var isFormEmpty: Bool {
         title.isEmpty && authors.isEmpty && isbn.isEmpty &&
-        publisher.isEmpty && year.isEmpty && pageCount.isEmpty && 
+        publisher.isEmpty && year.isEmpty && pageCount.isEmpty &&
+        copyCount.isEmpty &&
         description.isEmpty && coverImageData == nil
     }
 
@@ -663,6 +886,7 @@ struct AddBookManualView: View {
             bookDescription: description.isEmpty ? nil : description,
             publishers: publisher.isEmpty ? [] : [publisher],
             pageCount: Int(pageCount),
+            copyCount: Int(copyCount) ?? 1,
             readingStatus: .toRead
         )
         
@@ -685,6 +909,7 @@ struct AddBookManualView: View {
         publisher = ""
         year = ""
         pageCount = ""
+        copyCount = "1"
         description = ""
         coverImageData = nil
         imageLoadError = nil
@@ -694,7 +919,7 @@ struct AddBookManualView: View {
     // MARK: - Focus Management
     
     private enum Field: Hashable {
-        case title, authors, isbn, publisher, year, pageCount, description
+        case title, authors, isbn, publisher, year, pageCount, copyCount, description
     }
 }
 

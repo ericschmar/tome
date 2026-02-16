@@ -259,7 +259,7 @@ struct LibraryMainView_Example: View {
         let searchService = BookSearchService.shared
         
         do {
-            if try searchService.needsReindexing(modelContext: modelContext) {
+            if try await searchService.needsReindexing(modelContext: modelContext) {
                 print("📚 Building search index...")
                 try await searchService.rebuildIndex(from: modelContext)
                 print("✅ Search index ready")

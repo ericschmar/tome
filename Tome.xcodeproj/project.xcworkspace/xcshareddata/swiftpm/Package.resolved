@@ -1,5 +1,5 @@
 {
-  "originHash" : "7a3dfa63fb35d82800dfc7191edb3d90f803e7be79ea56990d426355f40e6404",
+  "originHash" : "7149aff67fb8fa17101ae4393f7bd4956897dc685d6e2ab6590bf20f21e037a9",
   "pins" : [
     {
       "identity" : "colorselector",
@@ -8,6 +8,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "c953d9a8bbb880376d9d789dab569b1c4192d9dd"
+      }
+    },
+    {
+      "identity" : "similarity-search-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ZachNagengast/similarity-search-kit.git",
+      "state" : {
+        "revision" : "9bec54706c8124bb9b20a3a06d566066a9f55712",
+        "version" : "0.0.15"
       }
     }
   ],

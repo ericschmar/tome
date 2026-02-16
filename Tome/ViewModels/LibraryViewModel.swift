@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import Combine
 
 /// View model for managing library state
 @MainActor
@@ -16,6 +17,7 @@ final class LibraryViewModel {
             applyFiltersAndSort()
         }
     }
+    private var debounceTask: Task<Void, Never>?
     var selectedStatus: ReadingStatus? {
         didSet {
             applyFiltersAndSort()
@@ -128,13 +130,38 @@ final class LibraryViewModel {
     // MARK: - Filtering and Sorting
 
     func applyFiltersAndSort() {
-        filteredBooks = books
+        // Cancel previous search
+        debounceTask?.cancel()
 
-        // Apply search filter
-        if !searchText.isEmpty {
-            filteredBooks = searchService.search(query: searchText, in: modelContext)
+        // If no search text, apply filters immediately
+        if searchText.isEmpty {
+            filteredBooks = books
+            applyDestinationFilterAndSort()
+            return
         }
 
+        // Debounce by 300ms for semantic search
+        debounceTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 300_000_000) // 300ms
+            } catch {
+                return // Cancelled
+            }
+
+            await performSearch()
+        }
+    }
+
+    private func performSearch() async {
+        let results = await searchService.search(query: searchText, in: modelContext)
+
+        await MainActor.run {
+            self.filteredBooks = results
+            self.applyDestinationFilterAndSort()
+        }
+    }
+
+    private func applyDestinationFilterAndSort() {
         // Apply destination filter (for status and tag destinations)
         switch selectedDestination {
         case .currentlyReading:
@@ -217,11 +244,14 @@ final class LibraryViewModel {
     // MARK: - Search Index Maintenance
 
     private func checkAndRebuildSearchIndexIfNeeded() async {
+        print("🔍 Checking if search index needs rebuilding...")
         do {
-            if try searchService.needsReindexing(modelContext: modelContext) {
-                print("📚 Rebuilding search index...")
+            if try await searchService.needsReindexing(modelContext: modelContext) {
+                print("📚 Search index rebuild needed, starting...")
                 try await searchService.rebuildIndex(from: modelContext)
-                print("✅ Search index rebuilt with \(searchService.indexStats.bookCount) books")
+                print("✅ Search index rebuild completed")
+            } else {
+                print("✅ Search index is up to date")
             }
         } catch {
             print("❌ Failed to check/rebuild search index: \(error)")

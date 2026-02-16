@@ -85,7 +85,9 @@ struct LibrarySearchView: View {
                     .textInputAutocapitalization(.never)
                     #endif
                     .onChange(of: searchQuery) { _, newValue in
-                        performSearch(query: newValue)
+                        Task {
+                            await performSearch(query: newValue)
+                        }
                     }
                 
                 if !searchQuery.isEmpty {
@@ -206,18 +208,18 @@ struct LibrarySearchView: View {
     
     // MARK: - Helper Methods
     
-    private func performSearch(query: String) {
+    private func performSearch(query: String) async {
         guard !query.isEmpty else {
             searchResults = []
             return
         }
         
-        searchResults = searchService.search(query: query, in: modelContext)
+        searchResults = await searchService.search(query: query, in: modelContext)
     }
     
     private func performInitialIndexIfNeeded() async {
         do {
-            if try searchService.needsReindexing(modelContext: modelContext) {
+            if try await searchService.needsReindexing(modelContext: modelContext) {
                 isPerformingInitialIndex = true
                 try await searchService.rebuildIndex(from: modelContext)
                 isPerformingInitialIndex = false
@@ -241,7 +243,7 @@ struct LibrarySearchView: View {
         
         // Re-run search if there's a query
         if !searchQuery.isEmpty {
-            performSearch(query: searchQuery)
+            await performSearch(query: searchQuery)
         }
     }
     

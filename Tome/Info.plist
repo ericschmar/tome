@@ -6,5 +6,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Tome needs camera access to scan book covers for automatic text extraction and ISBN detection.</string>
 </dict>
 </plist>

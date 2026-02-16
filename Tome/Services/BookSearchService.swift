@@ -7,33 +7,60 @@ import Observation
 @Observable
 final class BookSearchService {
     static let shared = BookSearchService()
-    
-    private let searchIndex = BookSearchIndex()
+
+    private let semanticSearch = SemanticBookSearch()
     private let persistenceManager = SearchIndexPersistence()
-    
+
     var isIndexing = false
     var indexProgress: Double = 0.0
     var lastIndexedDate: Date?
-    
+    var isModelLoading = false
+
     private init() {
-        // Load persisted index on init
+        // Initialize semantic search on init
         Task {
-            await loadPersistedIndex()
+            await initialize()
+        }
+    }
+
+    private func initialize() async {
+        isModelLoading = true
+        defer { isModelLoading = false }
+
+        do {
+            // Try to load persisted index
+            let lastSaved = await semanticSearch.persistenceManager.lastSavedDate()
+
+            // If we have a saved index, try to load it
+            if let saved = lastSaved {
+                print("📂 Found saved index from \(saved)")
+                try await semanticSearch.initialize(loadFrom: .loadIfAvailable)
+                lastIndexedDate = saved
+            } else {
+                print("📂 No saved index found")
+                try await semanticSearch.initialize(loadFrom: .forceRebuild)
+            }
+        } catch {
+            print("⚠️ Failed to initialize semantic search: \(error)")
         }
     }
     
     // MARK: - Public API
-    
-    /// Search for books in the library, returning actual Book objects
-    func search(query: String, in modelContext: ModelContext) -> [Book] {
-        let searchResults = searchIndex.search(query: query)
 
-        print(searchResults)
-        // Extract book IDs from search results
-        let bookIds = searchResults.map { $0.book.id }
+    /// Search for books in the library, returning actual Book objects
+    func search(query: String, in modelContext: ModelContext) async -> [Book] {
+        // Check ISBN first (instant exact match)
+        if let isbnResult = searchISBN(query: query, in: modelContext) {
+            return [isbnResult]
+        }
+
+        // Use semantic search
+        let semanticResults = await semanticSearch.search(query)
+
+        guard !semanticResults.isEmpty else { return [] }
 
         // Fetch actual Book objects from SwiftData
-        guard !bookIds.isEmpty else { return [] }
+        let bookIds = semanticResults.map { $0.id }
 
         let descriptor = FetchDescriptor<Book>(
             predicate: #Predicate<Book> { book in
@@ -49,30 +76,63 @@ final class BookSearchService {
             return []
         }
 
-        // Sort results according to search ranking
-        let idToIndex = Dictionary(uniqueKeysWithValues: bookIds.enumerated().map { ($1, $0) })
+        // Sort results according to semantic search ranking
+        let idToScore = Dictionary(uniqueKeysWithValues: semanticResults.map { ($0.id, $0.score) })
         return fetchedBooks.sorted { book1, book2 in
-            let index1 = idToIndex[book1.id] ?? Int.max
-            let index2 = idToIndex[book2.id] ?? Int.max
-            return index1 < index2
+            let score1 = idToScore[book1.id] ?? 0
+            let score2 = idToScore[book2.id] ?? 0
+            return score1 > score2
+        }
+    }
+
+    /// Search by ISBN for instant exact match
+    private func searchISBN(query: String, in modelContext: ModelContext) -> Book? {
+        let normalizedQuery = query.normalizedForSearch()
+
+        // Fetch all books and filter in memory since normalizedForSearch() 
+        // is not supported in predicates
+        let descriptor = FetchDescriptor<Book>()
+
+        let results: [Book]
+        do {
+            results = try modelContext.fetch(descriptor)
+        } catch {
+            print("⚠️ Failed to fetch books by ISBN: \(error)")
+            return nil
+        }
+
+        // Filter in memory using normalizedForSearch()
+        return results.first { book in
+            book.isbn10?.normalizedForSearch() == normalizedQuery ||
+            book.isbn13?.normalizedForSearch() == normalizedQuery
         }
     }
     
     /// Add a book to the search index
     func indexBook(_ book: Book) {
-        searchIndex.indexBook(book)
-        
-        // Persist in background
+        // Index in semantic search
+        Task {
+            await semanticSearch.indexBook(book)
+            // Save the updated index
+            await semanticSearch.saveIndex()
+        }
+
+        // Persist metadata in background
         Task {
             await persistIndex()
         }
     }
-    
+
     /// Remove a book from the search index
     func removeBook(id: UUID) {
-        searchIndex.removeBook(id)
-        
-        // Persist in background
+        // Remove from semantic search
+        Task {
+            await semanticSearch.removeBook(id: id)
+            // Save the updated index
+            await semanticSearch.saveIndex()
+        }
+
+        // Persist metadata in background
         Task {
             await persistIndex()
         }
@@ -80,91 +140,127 @@ final class BookSearchService {
     
     /// Rebuild the entire search index from the model context
     func rebuildIndex(from modelContext: ModelContext) async throws {
+        print("🔄 Starting search index rebuild...")
         isIndexing = true
         indexProgress = 0.0
-        
+
         defer {
             isIndexing = false
         }
-        
-        // Clear existing index
-        searchIndex.clearIndex()
-        
+
+        // Clear existing semantic index
+        await semanticSearch.clearIndex()
+
         // Fetch all books
         let descriptor = FetchDescriptor<Book>(sortBy: [SortDescriptor(\.dateAdded, order: .reverse)])
         let books = try modelContext.fetch(descriptor)
-        
+
         let total = books.count
+        print("📚 Found \(total) books to index")
+
         guard total > 0 else {
             lastIndexedDate = Date()
-            await persistIndex()
+            await semanticSearch.saveIndex()
+            print("✅ No books to index")
             return
         }
-        
+
         // Index books with progress updates
         for (index, book) in books.enumerated() {
-            searchIndex.indexBook(book)
-            
+            await semanticSearch.indexBook(book)
+
             // Update progress
             indexProgress = Double(index + 1) / Double(total)
-            
-            // Yield periodically to keep UI responsive
-            if index % 10 == 0 {
+
+            // Log progress every 10 books
+            if (index + 1) % 10 == 0 {
+                print("⏳ Indexed \(index + 1)/\(total) books (\(Int(indexProgress * 100))%)")
+            }
+
+            // Yield more frequently due to slower embedding generation
+            if index % 5 == 0 {
                 await Task.yield()
             }
         }
-        
+
         lastIndexedDate = Date()
         indexProgress = 1.0
-        
-        // Persist the index
+        print("✅ Search index rebuild completed: \(total) books indexed")
+
+        // Save the index to disk for fast startup next time
+        await semanticSearch.saveIndex()
         await persistIndex()
     }
     
     /// Check if index needs rebuilding (e.g., if book count doesn't match)
-    func needsReindexing(modelContext: ModelContext) throws -> Bool {
+    func needsReindexing(modelContext: ModelContext) async throws -> Bool {
         let descriptor = FetchDescriptor<Book>()
         let bookCount = try modelContext.fetchCount(descriptor)
-        
-        return searchIndex.count != bookCount
+
+        // If no books in library, no need to rebuild
+        if bookCount == 0 {
+            return false
+        }
+
+        // Check if we have a persisted index
+        if let lastSaved = await semanticSearch.persistenceManager.lastSavedDate() {
+            print("📚 Found saved index from \(lastSaved)")
+
+            // TODO: Implement proper change detection
+            // For now, rebuild if it's been more than 24 hours since last index
+            let hoursSinceIndex = Date().timeIntervalSince(lastSaved) / 3600
+
+            if hoursSinceIndex > 24 {
+                print("📚 Index is stale (\(Int(hoursSinceIndex))h old), rebuilding...")
+                return true
+            } else {
+                print("✅ Index is recent (\(Int(hoursSinceIndex))h old), skipping rebuild")
+                return false
+            }
+        }
+
+        // No saved index found, need to rebuild
+        print("📚 No saved index found, library has \(bookCount) books")
+        return true
     }
-    
+
     /// Get current index statistics
     var indexStats: IndexStats {
         IndexStats(
-            bookCount: searchIndex.count,
+            bookCount: 0, // Semantic search doesn't expose count
             lastIndexedDate: lastIndexedDate
         )
     }
     
     // MARK: - Persistence
-    
+
     private func persistIndex() async {
-        // Convert search index to persistable format
-        let bookIds = searchIndex.indexedBookIds
+        // Persist metadata only (embeddings are rebuilt on startup)
         let metadata = SearchIndexMetadata(
-            bookIds: Array(bookIds),
+            bookIds: [], // Not tracking individual book IDs for semantic search
             lastUpdated: Date(),
-            version: 1
+            version: 2 // Version 2 for semantic search
         )
-        
+
         await persistenceManager.save(metadata: metadata)
     }
-    
+
     private func loadPersistedIndex() async {
         guard let metadata = await persistenceManager.load() else {
             return
         }
-        
+
+        // Only load metadata, embeddings will be rebuilt when needed
         lastIndexedDate = metadata.lastUpdated
-        // Note: We store metadata but rebuild index on startup for simplicity
+        // Note: Semantic search embeddings are rebuilt on startup for simplicity
         // In a production app, you might want to serialize the entire index
     }
-    
+
     /// Clear persisted index data
     func clearPersistedData() async {
         await persistenceManager.clear()
-        searchIndex.clearIndex()
+        await semanticSearch.persistenceManager.clearIndex()
+        await semanticSearch.clearIndex()
         lastIndexedDate = nil
     }
 }
@@ -245,8 +341,9 @@ actor SearchIndexPersistence {
 
 // MARK: - Search Index Metadata
 
-struct SearchIndexMetadata: Codable {
+nonisolated struct SearchIndexMetadata: Codable {
     let bookIds: [UUID]
     let lastUpdated: Date
     let version: Int
 }
+

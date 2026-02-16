@@ -9,13 +9,22 @@ struct BookContentView: View {
     var onBack: (() -> Void)?
     var onDelete: (() -> Void)?
 
-    @State private var showingEdit = false
     @State private var showingDeleteConfirmation = false
+    @State private var copyCount: String
     @State private var showingAddTag = false
     @State private var showingAllPublishers = false
+    @State private var showingAllLanguages = false
     @State private var showingCoverPicker = false
     
     @Query(sort: \Tag.name) private var allTags: [Tag]
+
+    init(source: BookContentSource, onAdd: (() -> Void)? = nil, onBack: (() -> Void)? = nil, onDelete: (() -> Void)? = nil) {
+        self.source = source
+        self.onAdd = onAdd
+        self.onBack = onBack
+        self.onDelete = onDelete
+        self._copyCount = State(initialValue: (source.copyCount ?? 1).description)
+    }
 
     var body: some View {
         ScrollView {
@@ -85,6 +94,9 @@ struct BookContentView: View {
         }
         .popover(isPresented: $showingAllPublishers) {
             allPublishersPopover
+        }
+        .popover(isPresented: $showingAllLanguages) {
+            allLanguagesPopover
         }
     }
 
@@ -198,11 +210,7 @@ struct BookContentView: View {
                             .font(.system(size: 13, weight: .medium, design: .default))
                             .foregroundStyle(.secondary)
 
-                        FlowingLayout(spacing: 6) {
-                            ForEach(source.languages.sorted(), id: \.self) { lang in
-                                LanguageBadge(languageCode: lang)
-                            }
-                        }
+                        languagesChips
                     }
                 }
 
@@ -219,6 +227,32 @@ struct BookContentView: View {
                             .font(.system(size: 13, weight: .regular, design: .default))
                             .foregroundStyle(.primary)
                             .textSelection(.enabled)
+                    }
+                }
+
+                // Copy count
+                if source.copyCount != nil {
+                    GridRow(alignment: .firstTextBaseline) {
+                        Text("Copies")
+                            .gridColumnAlignment(.leading)
+                            .frame(width: 90, alignment: .leading)
+                            .font(.system(size: 13, weight: .medium, design: .default))
+                            .foregroundStyle(.secondary)
+
+                        if source.isLibraryBook, let book = source.book {
+                            CopyCountInputView(copyCount: $copyCount)
+                                .onChange(of: copyCount) { _, newValue in
+                                    if let value = Int(newValue), value > 0 {
+                                        book.copyCount = value
+                                        updateBook(book)
+                                    }
+                                }
+                        } else {
+                            Text(copyCountDisplay)
+                                .font(.system(size: 13, weight: .regular, design: .default))
+                                .foregroundStyle(.primary)
+                                .textSelection(.enabled)
+                        }
                     }
                 }
 
@@ -319,6 +353,62 @@ struct BookContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(source.publishers.sorted(), id: \.self) { publisher in
                     Text(publisher)
+                        .font(.system(size: 13, weight: .regular, design: .default))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .padding(.vertical, 2)
+                }
+            }
+        }
+        .padding(16)
+        .frame(width: 240)
+    }
+
+    private var languagesChips: some View {
+        let sortedLanguages = source.languages.sorted()
+
+        return HStack(spacing: 6) {
+            if sortedLanguages.count <= 2 {
+                ForEach(sortedLanguages, id: \.self) { language in
+                    LanguageChip(language: language)
+                        .textSelection(.enabled)
+                }
+            } else {
+                LanguageChip(language: sortedLanguages[0])
+                    .textSelection(.enabled)
+
+                if sortedLanguages.count > 1 {
+                    Button {
+                        showingAllLanguages = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 9, weight: .semibold))
+
+                            Text("\(sortedLanguages.count - 1) more")
+                                .font(.system(size: 12, weight: .medium, design: .default))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .foregroundStyle(.secondary)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var allLanguagesPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("All Languages")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(.primary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(source.languages.sorted(), id: \.self) { language in
+                    Text(language)
                         .font(.system(size: 13, weight: .regular, design: .default))
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
@@ -485,6 +575,11 @@ struct BookContentView: View {
         source.authors.isEmpty ? "Unknown Author" : source.authors.joined(separator: ", ")
     }
 
+    private var copyCountDisplay: String {
+        let count = source.copyCount ?? 1
+        return count == 1 ? "1 copy" : "\(count) copies"
+    }
+
     // MARK: - Actions
 
     private func updateBook(_ book: Book) {
@@ -546,6 +641,22 @@ struct PublisherChip: View {
 
     var body: some View {
         Text(publisher)
+            .font(.system(size: 12, weight: .medium, design: .default))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .foregroundStyle(.primary)
+            .background(Color.secondary.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+// MARK: - Language Chip
+
+struct LanguageChip: View {
+    let language: String
+
+    var body: some View {
+        Text(language)
             .font(.system(size: 12, weight: .medium, design: .default))
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
