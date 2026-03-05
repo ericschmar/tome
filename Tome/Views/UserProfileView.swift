@@ -8,53 +8,7 @@ struct UserProfileView: View {
     @State private var showingSettings = false
     
     var body: some View {
-        Button {
-            showingMenu.toggle()
-        } label: {
-            HStack(spacing: 10) {
-                // User photo
-                userPhotoView
-                    .frame(width: 32, height: 32)
-                    .clipShape(Circle())
-                
-                // User name
-                if accountService.isAccountAvailable {
-                    Text(accountService.displayName)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                } else {
-                    Text("Not Signed In")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-                
-                // Chevron down
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(showingMenu ? 180 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: showingMenu)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.08))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.gray.opacity(0.15), lineWidth: 1)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .popover(isPresented: $showingMenu, arrowEdge: .top) {
-            userMenuPopover
-        }
+        profileButtonLabel
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
@@ -65,6 +19,70 @@ struct UserProfileView: View {
         }
     }
     
+    private var buttonLabel: some View {
+        HStack(spacing: 10) {
+            userPhotoView
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
+
+            if accountService.isAccountAvailable {
+                Text(accountService.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            } else {
+                Text("Not Signed In")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(showingMenu ? 180 : 0))
+                .animation(.easeInOut(duration: 0.2), value: showingMenu)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.gray.opacity(0.15), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var profileButtonLabel: some View {
+#if os(iOS)
+        Menu {
+            Button {
+                showingSettings = true
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+        } label: {
+            buttonLabel
+        }
+#else
+        Button {
+            showingMenu.toggle()
+        } label: {
+            buttonLabel
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingMenu, arrowEdge: .top) {
+            userMenuPopover
+        }
+#endif
+    }
+
     @ViewBuilder
     private var userPhotoView: some View {
         if let photo = accountService.userPhoto {

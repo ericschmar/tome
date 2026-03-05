@@ -15,10 +15,15 @@ struct tomeApp: App {
             Book.self,
             Tag.self,
         ])
+        
+        // IMPORTANT: Explicitly specify the CloudKit container identifier
+        // This ensures both devices use the same container
+        // Replace with your actual container ID from Xcode's Signing & Capabilities
+        let cloudKitContainerIdentifier = "iCloud.com.ericschmar.tome"
+        
         let modelConfiguration = ModelConfiguration(
-            schema: schema, 
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic  // Enable CloudKit integration
+            schema: schema,
+            cloudKitDatabase: .private(cloudKitContainerIdentifier)
         )
 
         do {

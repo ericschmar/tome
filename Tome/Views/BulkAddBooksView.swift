@@ -48,9 +48,16 @@ struct BulkAddBooksView: View {
                                     isSelected: viewModel.isSelected(result)
                                 ) {
                                     viewModel.toggleSelection(result)
-                                    // Clear search and focus search field after selection
-                                    viewModel.clearSearch()
+                                    // Clear search results but keep the query for now
+                                    viewModel.searchResults = []
+                                    viewModel.hasSearched = false
+                                    
+                                    // Focus first, then clear after a short delay
                                     isSearchFocused = true
+                                    
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        viewModel.searchQuery = ""
+                                    }
                                 }
                             }
                         }

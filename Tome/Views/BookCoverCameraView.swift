@@ -9,50 +9,18 @@ struct BookCoverCameraView: View {
     @Binding var capturedImageData: Data?
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showPicker = false
+    @State private var showPicker = true
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.blue)
-
-                Text("Scan Book Cover")
-                    .font(.title2.bold())
-
-                Text("Position your book cover in the camera frame. The app will automatically detect and crop the cover.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                Button {
-                    showPicker = true
-                } label: {
-                    Label("Open Camera", systemImage: "camera.fill")
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.top)
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Add Book Cover")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+            Color.clear
+                .fullScreenCover(isPresented: $showPicker, onDismiss: {
+                    dismiss()
+                }) {
+                    ImagePicker { image in
+                        processCapturedImage(image)
                     }
                 }
-            }
-            .fullScreenCover(isPresented: $showPicker) {
-                ImagePicker { image in
-                    processCapturedImage(image)
-                }
-            }
         }
     }
 

@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var settings = AppSettings.shared
     @State private var showingClearCacheAlert = false
     @State private var cacheSize: String = "Calculating..."
+    @State private var syncMonitor = CloudSyncMonitor.shared
     
     var body: some View {
         VStack(spacing: 0) {
@@ -28,6 +29,14 @@ struct SettingsView: View {
                     // Language section
                     settingsSection(title: "Content") {
                         languageSelector
+                    }
+                    
+                    Divider()
+                        .padding(.horizontal, 20)
+                    
+                    // iCloud Sync section
+                    settingsSection(title: "iCloud Sync") {
+                        cloudSyncManagement
                     }
                     
                     Divider()
@@ -181,6 +190,82 @@ struct SettingsView: View {
             .labelsHidden()
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
+        }
+    }
+    
+    // MARK: - Cache Management
+    
+    private var cloudSyncManagement: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Sync Status")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 20)
+            
+            VStack(spacing: 12) {
+                // Sync status row
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Status")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        
+                        HStack(spacing: 6) {
+                            if syncMonitor.isSyncing {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .frame(width: 12, height: 12)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.green)
+                            }
+                            
+                            Text(syncMonitor.statusMessage)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.06))
+                )
+                .padding(.horizontal, 20)
+                
+                // Force sync button
+                Button {
+                    syncMonitor.forceSyncCheck()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Force Sync Check")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.accentColor)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .disabled(syncMonitor.isSyncing)
+                .opacity(syncMonitor.isSyncing ? 0.5 : 1.0)
+            }
+            
+            // Info text
+            Text("Your library syncs automatically with iCloud. Use Force Sync Check to manually trigger a sync verification.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
         }
     }
     

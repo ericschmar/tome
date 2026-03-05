@@ -1,5 +1,7 @@
 import SwiftData
+import SwiftData
 import SwiftUI
+internal import UniformTypeIdentifiers
 
 /// Unified book detail view that adapts for library books or search results
 struct BookContentView: View {
@@ -15,6 +17,11 @@ struct BookContentView: View {
     @State private var showingAllPublishers = false
     @State private var showingAllLanguages = false
     @State private var showingCoverPicker = false
+    @State private var showingImagePicker = false
+    @State private var showingURLInput = false
+    @State private var imageURLString = ""
+    @State private var imageLoadError: String?
+    @State private var showingEditSubjects = false
     
     @Query(sort: \Tag.name) private var allTags: [Tag]
 
@@ -92,11 +99,39 @@ struct BookContentView: View {
                 CoverPickerSheet(book: book)
             }
         }
+        .fileImporter(
+            isPresented: $showingImagePicker,
+            allowedContentTypes: [.png, .jpeg, .heic],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImageSelection(result)
+        }
+        .sheet(isPresented: $showingURLInput) {
+            URLImageInputSheet(
+                urlString: $imageURLString,
+                onLoad: { data in
+                    if let book = source.book {
+                        book.coverImageData = data
+                        book.coverID = nil  // Clear Open Library cover ID when using custom image
+                        updateBook(book)
+                        imageLoadError = nil
+                    }
+                },
+                onError: { error in
+                    imageLoadError = error
+                }
+            )
+        }
         .popover(isPresented: $showingAllPublishers) {
             allPublishersPopover
         }
         .popover(isPresented: $showingAllLanguages) {
             allLanguagesPopover
+        }
+        .sheet(isPresented: $showingEditSubjects) {
+            if let book = source.book {
+                EditSubjectsSheet(book: book)
+            }
         }
     }
 
@@ -115,6 +150,18 @@ struct BookContentView: View {
                         showingCoverPicker = true
                     } label: {
                         Label("Choose Cover Photo", systemImage: "photo.on.rectangle.angled")
+                    }
+
+                    Button {
+                        showingImagePicker = true
+                    } label: {
+                        Label("Upload from Computer", systemImage: "arrow.up.doc")
+                    }
+
+                    Button {
+                        showingURLInput = true
+                    } label: {
+                        Label("Load from URL", systemImage: "link")
                     }
 
                     Divider()
@@ -230,32 +277,6 @@ struct BookContentView: View {
                     }
                 }
 
-                // Copy count
-                if source.copyCount != nil {
-                    GridRow(alignment: .firstTextBaseline) {
-                        Text("Copies")
-                            .gridColumnAlignment(.leading)
-                            .frame(width: 90, alignment: .leading)
-                            .font(.system(size: 13, weight: .medium, design: .default))
-                            .foregroundStyle(.secondary)
-
-                        if source.isLibraryBook, let book = source.book {
-                            CopyCountInputView(copyCount: $copyCount)
-                                .onChange(of: copyCount) { _, newValue in
-                                    if let value = Int(newValue), value > 0 {
-                                        book.copyCount = value
-                                        updateBook(book)
-                                    }
-                                }
-                        } else {
-                            Text(copyCountDisplay)
-                                .font(.system(size: 13, weight: .regular, design: .default))
-                                .foregroundStyle(.primary)
-                                .textSelection(.enabled)
-                        }
-                    }
-                }
-
                 // ISBN
                 if let isbn = source.isbn {
                     GridRow(alignment: .firstTextBaseline) {
@@ -273,7 +294,7 @@ struct BookContentView: View {
                 }
 
                 // Subjects
-                if !source.subjects.isEmpty {
+                if !source.subjects.isEmpty || source.isLibraryBook {
                     GridRow(alignment: .firstTextBaseline) {
                         Text("Subjects")
                             .gridColumnAlignment(.leading)
@@ -281,11 +302,37 @@ struct BookContentView: View {
                             .font(.system(size: 13, weight: .medium, design: .default))
                             .foregroundStyle(.secondary)
 
-                        Text(source.subjects.prefix(5).joined(separator: ", "))
-                            .font(.system(size: 13, weight: .regular, design: .default))
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-                            .textSelection(.enabled)
+                        if source.isLibraryBook {
+                            HStack(spacing: 8) {
+                                if source.subjects.isEmpty {
+                                    Text("No subjects")
+                                        .font(.system(size: 13, weight: .regular, design: .default))
+                                        .foregroundStyle(.tertiary)
+                                } else {
+                                    Text(source.subjects.prefix(5).joined(separator: ", "))
+                                        .font(.system(size: 13, weight: .regular, design: .default))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(2)
+                                        .textSelection(.enabled)
+                                }
+                                
+                                Button {
+                                    showingEditSubjects = true
+                                } label: {
+                                    Image(systemName: "pencil.circle")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Edit subjects")
+                            }
+                        } else {
+                            Text(source.subjects.prefix(5).joined(separator: ", "))
+                                .font(.system(size: 13, weight: .regular, design: .default))
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                                .textSelection(.enabled)
+                        }
                     }
                 }
 
@@ -631,6 +678,44 @@ struct BookContentView: View {
     private func removeCoverImage(from book: Book) {
         book.coverImageData = nil
         updateBook(book)
+    }
+
+    private func handleImageSelection(_ result: Result<[URL], Error>) {
+        imageLoadError = nil
+        
+        guard let book = source.book else { return }
+        
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            // Check if we have access to the security-scoped resource
+            guard url.startAccessingSecurityScopedResource() else {
+                imageLoadError = "Could not access the selected file"
+                return
+            }
+            
+            defer { url.stopAccessingSecurityScopedResource() }
+            
+            do {
+                let data = try Data(contentsOf: url)
+                
+                // Verify it's a valid image
+                guard PlatformImage.from(data: data) != nil else {
+                    imageLoadError = "Selected file is not a valid image"
+                    return
+                }
+                
+                book.coverImageData = data
+                book.coverID = nil  // Clear Open Library cover ID when using custom image
+                updateBook(book)
+            } catch {
+                imageLoadError = "Failed to load image: \(error.localizedDescription)"
+            }
+            
+        case .failure(let error):
+            imageLoadError = "Failed to select image: \(error.localizedDescription)"
+        }
     }
 }
 
@@ -1096,6 +1181,184 @@ struct CoverOptionView: View {
                 )
             }
         }
+    }
+}
+
+// MARK: - Edit Subjects Sheet
+
+struct EditSubjectsSheet: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var book: Book
+    
+    @State private var subjects: [String] = []
+    @State private var newSubject = ""
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                // Input section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Add Subject")
+                        .font(.system(size: 13, weight: .semibold, design: .default))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    
+                    HStack(spacing: 12) {
+                        TextField("Enter a subject", text: $newSubject)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isTextFieldFocused)
+                            .onSubmit {
+                                addSubject()
+                            }
+                        
+                        Button {
+                            addSubject()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(newSubject.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .opacity(newSubject.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1.0)
+                    }
+                    
+                    Text("Add subjects like genres, topics, or themes")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
+                // Subjects list
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Current Subjects")
+                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        
+                        Spacer()
+                        
+                        Text("\(subjects.count)")
+                            .font(.system(size: 13, weight: .semibold, design: .default))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.secondary.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    
+                    if subjects.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "text.book.closed")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary.opacity(0.5))
+                            Text("No subjects added yet")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 40)
+                    } else {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 8) {
+                                ForEach(Array(subjects.enumerated()), id: \.offset) { index, subject in
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "text.alignleft")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 20)
+                                        
+                                        Text(subject)
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundStyle(.primary)
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            removeSubject(at: index)
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 18))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color.secondary.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .navigationTitle("Edit Subjects")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        saveSubjects()
+                    }
+                }
+            }
+            .onAppear {
+                subjects = book.subjects
+                isTextFieldFocused = true
+            }
+        }
+        .frame(minWidth: 500, minHeight: 400)
+    }
+    
+    private func addSubject() {
+        let trimmedSubject = newSubject.trimmingCharacters(in: .whitespaces)
+        guard !trimmedSubject.isEmpty else { return }
+        
+        // Avoid duplicates (case-insensitive)
+        if !subjects.contains(where: { $0.lowercased() == trimmedSubject.lowercased() }) {
+            subjects.append(trimmedSubject)
+            newSubject = ""
+            isTextFieldFocused = true
+        } else {
+            // Already exists - clear and refocus
+            newSubject = ""
+            isTextFieldFocused = true
+        }
+    }
+    
+    private func removeSubject(at index: Int) {
+        guard index < subjects.count else { return }
+        withAnimation {
+            subjects.remove(at: index)
+        }
+    }
+    
+    private func saveSubjects() {
+        book.subjects = subjects
+        book.dateModified = Date()
+        
+        do {
+            try modelContext.save()
+            print("✅ Successfully saved subjects to book")
+        } catch {
+            print("❌ Failed to save subjects: \(error.localizedDescription)")
+        }
+        
+        dismiss()
     }
 }
 

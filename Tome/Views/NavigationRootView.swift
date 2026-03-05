@@ -10,19 +10,54 @@ struct NavigationRootView: View {
 
     var body: some View {
         #if os(iOS)
-        NavigationStack {
-            iOSMainContent
+        ZStack(alignment: .leading) {
+            NavigationStack {
+                iOSMainContent
+            }
+
+            if navigationState.isSidebarPresented {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            navigationState.isSidebarPresented = false
+                        }
+                    }
+                    .transition(.opacity)
+
+                LibrarySidebar(
+                    selectedDestination: Binding(
+                        get: { navigationState.selectedDestination },
+                        set: { newValue in
+                            navigationState.selectedDestination = newValue
+                            viewModel?.setSelectedDestination(newValue)
+                            switch newValue {
+                            case .addBookSearch, .addBookManual, .addBookBulk, .settings:
+                                navigationState.selectedBook = nil
+                            default:
+                                break
+                            }
+                        }
+                    )
+                )
+                .frame(width: 280)
+                .background(
+                    Color(.systemBackground)
+                        .ignoresSafeArea()
+                )
+                .shadow(color: .black.opacity(0.15), radius: 12, x: 4, y: 0)
+                .transition(.move(edge: .leading))
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: navigationState.isSidebarPresented)
         .onAppear {
             if viewModel == nil {
                 viewModel = LibraryViewModel(modelContext: modelContext)
-                // Sync the initial destination with navigation state
                 viewModel?.setSelectedDestination(navigationState.selectedDestination)
             }
         }
         .onChange(of: navigationState.selectedDestination) { _, _ in
-            // Auto-hide sidebar when user taps a sidebar item on iOS
-            withAnimation {
+            withAnimation(.easeInOut(duration: 0.25)) {
                 navigationState.isSidebarPresented = false
             }
         }
@@ -125,29 +160,6 @@ struct NavigationRootView: View {
                         Image(systemName: "sidebar.left")
                     }
                 }
-            }
-            .sheet(isPresented: Binding(
-                get: { navigationState.isSidebarPresented },
-                set: { navigationState.isSidebarPresented = $0 }
-            )) {
-                LibrarySidebar(
-                    selectedDestination: Binding(
-                        get: { navigationState.selectedDestination },
-                        set: { newValue in
-                            navigationState.selectedDestination = newValue
-                            viewModel?.setSelectedDestination(newValue)
-                            // Clear selected book/result when navigating to non-library destinations
-                            switch newValue {
-                            case .addBookSearch, .addBookManual, .addBookBulk, .settings:
-                                navigationState.selectedBook = nil
-                            default:
-                                break
-                            }
-                        }
-                    )
-                )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
             }
             .navigationDestination(item: Binding(
                 get: { navigationState.selectedBook },
@@ -333,6 +345,9 @@ struct LibraryContentListView: View {
     let destination: NavigationDestination
     @Binding var selectedBook: Book?
     @State private var showingFilters = false
+#if os(iOS)
+    @State private var showingISBNScanner = false
+#endif
 
     private var booksForDestination: [Book] {
         viewModel.books(for: destination)
@@ -361,14 +376,12 @@ struct LibraryContentListView: View {
             }
 
             ToolbarItem(placement: .automatic) {
-                HStack {
-                    Button {
-                        withAnimation {
-                            viewModel.isGridView.toggle()
-                        }
-                    } label: {
-                        Image(systemName: viewModel.isGridView ? "list.bullet" : "square.grid.2x2")
+                Button {
+                    withAnimation {
+                        viewModel.isGridView.toggle()
                     }
+                } label: {
+                    Image(systemName: viewModel.isGridView ? "list.bullet" : "square.grid.2x2")
                 }
             }
         }
@@ -381,6 +394,22 @@ struct LibraryContentListView: View {
         .popover(isPresented: $showingFilters) {
             FilterPopover(viewModel: viewModel)
         }
+#if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingISBNScanner = true
+                } label: {
+                    Image(systemName: "barcode.viewfinder")
+                }
+            }
+        }
+        .sheet(isPresented: $showingISBNScanner) {
+            ISBNScannerSheet { isbn in
+                viewModel.updateSearchText(isbn)
+            }
+        }
+#endif
     }
 
     private var emptyStateView: some View {

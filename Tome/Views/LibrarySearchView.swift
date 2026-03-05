@@ -13,12 +13,18 @@ struct LibrarySearchView: View {
     @State private var showingIndexProgress = false
     
     private let searchService = BookSearchService.shared
+    private let syncMonitor = CloudSyncMonitor.shared
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Search bar
                 searchBar
+                
+                // iCloud sync progress indicator
+                if syncMonitor.isSyncing {
+                    syncProgressBanner
+                }
                 
                 // Content
                 if isPerformingInitialIndex {
@@ -31,6 +37,7 @@ struct LibrarySearchView: View {
                     searchResultsList
                 }
             }
+            .animation(.easeInOut(duration: 0.3), value: syncMonitor.isSyncing)
             .navigationTitle("Search Library")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -44,18 +51,34 @@ struct LibrarySearchView: View {
                 
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button {
-                            Task {
-                                await rebuildIndex()
+                        // Sync status section
+                        Section("iCloud Sync") {
+                            if syncMonitor.isSyncing {
+                                Label(syncMonitor.statusMessage, systemImage: "icloud.and.arrow.down")
+                            } else {
+                                Label(syncMonitor.statusMessage, systemImage: "icloud")
                             }
-                        } label: {
-                            Label("Rebuild Index", systemImage: "arrow.triangle.2.circlepath")
+                            
+                            if let lastSync = syncMonitor.lastSyncDate {
+                                Label("Last sync: \(syncMonitor.lastSyncFormatted)", systemImage: "clock")
+                            }
                         }
                         
                         Divider()
                         
-                        Text(searchService.indexStats.formattedLastIndexed)
-                            .font(.caption)
+                        // Index management section
+                        Section("Search Index") {
+                            Button {
+                                Task {
+                                    await rebuildIndex()
+                                }
+                            } label: {
+                                Label("Rebuild Index", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            
+                            Text(searchService.indexStats.formattedLastIndexed)
+                                .font(.caption)
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -121,6 +144,37 @@ struct LibrarySearchView: View {
             }
         }
         .background(.regularMaterial)
+    }
+    
+    // MARK: - Sync Progress Banner
+    
+    private var syncProgressBanner: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.small)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(syncMonitor.statusMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                
+                if syncMonitor.syncProgress > 0 {
+                    ProgressView(value: syncMonitor.syncProgress)
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 200)
+                }
+            }
+            
+            Spacer()
+            
+            Image(systemName: "icloud.and.arrow.down")
+                .foregroundStyle(.blue)
+                .symbolEffect(.pulse)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .background(.blue.opacity(0.1))
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
     
     // MARK: - Empty State

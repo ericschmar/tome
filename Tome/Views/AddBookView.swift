@@ -58,6 +58,9 @@ struct AddBookSearchView: View {
     var onResultSelected: (BookDocument) -> Void
     @Environment(NavigationState.self) private var navigationState
     @FocusState private var isSearchFocused: Bool
+#if os(iOS)
+    @State private var showingISBNScanner = false
+#endif
 
     var body: some View {
         Group {
@@ -100,6 +103,23 @@ struct AddBookSearchView: View {
                 await performSearch()
             }
         }
+#if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingISBNScanner = true
+                } label: {
+                    Image(systemName: "barcode.viewfinder")
+                }
+            }
+        }
+        .sheet(isPresented: $showingISBNScanner) {
+            ISBNScannerSheet { isbn in
+                viewModel.searchQuery = isbn
+                Task { await performSearch() }
+            }
+        }
+#endif
         .onChange(of: viewModel.searchQuery) { oldValue, newValue in
             // Auto-search when ISBN format is detected (10 or 13 digits)
             if isISBNQuery && (newValue.filter { $0.isNumber }.count == 10 || newValue.filter { $0.isNumber }.count == 13) {
@@ -272,233 +292,84 @@ struct AddBookManualView: View {
 
     var body: some View {
         Form {
-            // Header Section
-            Section {
-                VStack(spacing: 8) {
-                    Image(systemName: "book.pages")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.blue.gradient)
-                        .symbolEffect(.bounce, value: title.isEmpty)
-                    
-                    Text("Add Book Manually")
-                        .font(.title2.bold())
-                    
-                    Text("Enter the book details below")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-                .listRowBackground(Color.clear)
-            }
-            
-            // Cover Image Section
+            // Cover Image
             Section {
                 coverImageSection
-            } header: {
-                Label("Cover Image (Optional)", systemImage: "photo")
             }
-            
-            // Essential Information Section
+
+            // Essential Information
             Section {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Title", systemImage: "text.book.closed")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Book title", text: $title)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .title)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Authors", systemImage: "person.2")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Author names (comma separated)", text: $authors)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .authors)
-                        Text("Separate multiple authors with commas")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
+                LabeledContent("Title") {
+                    TextField("Required", text: $title)
+                        .focused($focusedField, equals: .title)
                 }
-            } header: {
-                Label("Essential Information", systemImage: "book.closed")
+                LabeledContent("Authors") {
+                    TextField("Required", text: $authors)
+                        .focused($focusedField, equals: .authors)
+                }
+            } footer: {
+                Text("Separate multiple authors with commas")
             }
-            
-            // Publication Details Section
+
+            // Publication Details
             Section {
-#if os(macOS)
-                // macOS: Two-column layout
-                HStack(alignment: .top, spacing: 20) {
-                    // Left column: ISBN and Publisher
-                    VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("ISBN", systemImage: "barcode")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("ISBN-10 or ISBN-13", text: $isbn)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .isbn)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Publisher", systemImage: "building.2")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("Publisher name", text: $publisher)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .publisher)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    
-                    // Right column: Year, Pages, and Copies
-                    VStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Year", systemImage: "calendar")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("YYYY", text: $year)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .year)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Pages", systemImage: "doc.text")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("000", text: $pageCount)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .pageCount)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Copies", systemImage: "doc.on.doc")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            CopyCountInputView(copyCount: $copyCount)
-                                .focused($focusedField, equals: .copyCount)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-#else
-                // iOS: Single-column layout
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("ISBN", systemImage: "barcode")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("ISBN-10 or ISBN-13", text: $isbn)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .isbn)
-                            .keyboardType(.numbersAndPunctuation)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Year", systemImage: "calendar")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("YYYY", text: $year)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .year)
-                                .keyboardType(.numberPad)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Pages", systemImage: "doc.text")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            TextField("000", text: $pageCount)
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedField, equals: .pageCount)
-                                .keyboardType(.numberPad)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("Copies", systemImage: "doc.on.doc")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                            CopyCountInputView(copyCount: $copyCount)
-                                .focused($focusedField, equals: .copyCount)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label("Publisher", systemImage: "building.2")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        TextField("Publisher name", text: $publisher)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .publisher)
-                    }
-                }
+                LabeledContent("ISBN") {
+                    TextField("ISBN-10 or ISBN-13", text: $isbn)
+                        .focused($focusedField, equals: .isbn)
+#if os(iOS)
+                        .keyboardType(.numbersAndPunctuation)
 #endif
-            } header: {
-                Label("Publication Details", systemImage: "info.circle")
-            }
-            
-            // Description Section
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    TextEditor(text: $description)
-                        .frame(minHeight: 120)
-                        .scrollContentBackground(.hidden)
-                        .background {
-#if canImport(AppKit)
-                            Color(nsColor: .textBackgroundColor)
-#else
-                            Color(.systemBackground)
-#endif
-                        }
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                        )
-                        .focused($focusedField, equals: .description)
-                    
-                    if description.isEmpty {
-                        Text("Add a brief description or summary of the book")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
                 }
-            } header: {
-                Label("Description (Optional)", systemImage: "text.alignleft")
+                LabeledContent("Year") {
+                    TextField("YYYY", text: $year)
+                        .focused($focusedField, equals: .year)
+#if os(iOS)
+                        .keyboardType(.numberPad)
+#endif
+                }
+                LabeledContent("Pages") {
+                    TextField("0", text: $pageCount)
+                        .focused($focusedField, equals: .pageCount)
+#if os(iOS)
+                        .keyboardType(.numberPad)
+#endif
+                }
+                LabeledContent("Publisher") {
+                    TextField("Publisher name", text: $publisher)
+                        .focused($focusedField, equals: .publisher)
+                }
             }
-            
-            // Action Buttons Section
+
+            // Description
+            Section("Description") {
+                TextEditor(text: $description)
+                    .frame(minHeight: 100)
+                    .scrollContentBackground(.hidden)
+                    .focused($focusedField, equals: .description)
+            }
+
+            // Actions
             Section {
-                HStack(spacing: 12) {
-                    Button {
+                Button {
+                    addManualBook()
+                } label: {
+                    Text("Add Book")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!isFormValid)
+
+                if !isFormEmpty {
+                    Button("Clear Form", role: .destructive) {
                         clearAllFields()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isFormEmpty)
-                    
-                    Button {
-                        addManualBook()
-                    } label: {
-                        Text("Add Book")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!isFormValid)
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
         .formStyle(.grouped)
-#if os(iOS)
-        .environment(\.defaultMinListHeaderHeight, 0)
-#endif
         .onAppear {
             focusedField = .title
         }

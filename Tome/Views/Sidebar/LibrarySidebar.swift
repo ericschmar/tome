@@ -81,7 +81,7 @@ struct LibrarySidebar: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 4)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
@@ -95,6 +95,8 @@ struct LibrarySidebar: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 2, leading: 4, bottom: 2, trailing: 4))
         .tag(destination)
     }
 

@@ -34,6 +34,9 @@ class CloudKitAccountService {
         let container = CKContainer.default()
         print("🔍 CloudKit Container ID: \(container.containerIdentifier ?? "nil")")
         #endif
+        Task {
+            await fetchAccountInfo()
+        }
     }
     
     /// Fetch the current iCloud account status and user information
@@ -91,69 +94,26 @@ class CloudKitAccountService {
                 return
             }
             
-            print("✅ CloudKit account is available, attempting to fetch user info...")
+            print("✅ CloudKit account is available")
             isCloudKitEnabled = true
             
-            // Fetch user record ID - this requires the "iCloud" capability
+            // Fetch user record ID to verify CloudKit access
             let userRecordID = try await container.userRecordID()
             print("✅ Got user record ID: \(userRecordID.recordName)")
             
-            // Try to fetch user identity - this may fail if user hasn't enabled discoverability
-            // This is optional and shouldn't prevent CloudKit from working
-            do {
-                let userIdentity = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CKUserIdentity, Error>) in
-                    container.discoverUserIdentity(withUserRecordID: userRecordID) { identity, error in
-                        if let error = error {
-                            continuation.resume(throwing: error)
-                        } else if let identity = identity {
-                            continuation.resume(returning: identity)
-                        } else {
-                            continuation.resume(throwing: CKError(.unknownItem))
-                        }
-                    }
-                }
-                
-                // Extract display name
-                if let givenName = userIdentity.nameComponents?.givenName,
-                   let familyName = userIdentity.nameComponents?.familyName {
-                    userDisplayName = "\(givenName) \(familyName)"
-                } else {
-                    userDisplayName = userIdentity.nameComponents?.givenName ?? "iCloud User"
-                }
-                
-                print("✅ Successfully fetched user info: \(userDisplayName ?? "unknown")")
-                
-                // Fetch user photo if available
-                if userIdentity.contactIdentifiers.first != nil {
-                    await fetchUserPhotoFromContacts()
-                }
-            } catch let identityError as CKError where identityError.code == .notAuthenticated {
-                // User hasn't enabled "Allow people to look me up by email" in iCloud settings
-                // This is not a critical error - CloudKit still works, we just can't get their name
-                print("ℹ️ CloudKitAccountService: User identity not discoverable (user privacy setting)")
-                print("   CloudKit is still enabled and will work for syncing data")
-                
-                // Fall back to system user name instead
-                userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
-                #if canImport(AppKit)
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-                #elseif canImport(UIKit)
-                userPhoto = UIImage(systemName: "person.circle.fill")
-                #endif
-                
-                print("   Using system user name: \(userDisplayName ?? "unknown")")
-            } catch {
-                // Other errors fetching identity - also not critical
-                print("⚠️ CloudKitAccountService: Could not fetch user identity - \(error.localizedDescription)")
-                
-                // Fall back to system user name
-                userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
-                #if canImport(AppKit)
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-                #elseif canImport(UIKit)
-                userPhoto = UIImage(systemName: "person.circle.fill")
-                #endif
-            }
+            // Use system user name for display
+            // Note: The discoverUserIdentity API was deprecated in macOS 14.0 and is no longer
+            // supported. For displaying the current user's name, we use the system user name.
+            // User identity discovery was primarily for finding other users for sharing purposes.
+            userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
+            print("✅ Using system user name: \(userDisplayName ?? "unknown")")
+            
+            // Set default user photo
+            #if canImport(AppKit)
+            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
+            #elseif canImport(UIKit)
+            userPhoto = UIImage(systemName: "person.circle.fill")
+            #endif
             
             isLoading = false
         } catch let ckError as CKError {
