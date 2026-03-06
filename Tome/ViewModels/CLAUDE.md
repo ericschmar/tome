@@ -7,7 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #3388 | 10:44 PM | 🔵 | LibraryViewModel calls search index rebuild on initialization | ~203 |
 | #3370 | 10:09 PM | 🔵 | LibraryViewModel.applyFiltersAndSort() is search integration point | ~288 |
 | #3339 | 10:05 PM | 🔵 | LibraryViewModel integrates BookSearchService for filtered library views | ~185 |
 | #3324 | 10:03 PM | 🔵 | BookSearchViewModel handles Open Library API searches, not library searches | ~223 |

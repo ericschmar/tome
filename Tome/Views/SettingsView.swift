@@ -236,33 +236,10 @@ struct SettingsView: View {
                         .fill(Color.gray.opacity(0.06))
                 )
                 .padding(.horizontal, 20)
-                
-                // Force sync button
-                Button {
-                    syncMonitor.forceSyncCheck()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("Force Sync Check")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.accentColor)
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .disabled(syncMonitor.isSyncing)
-                .opacity(syncMonitor.isSyncing ? 0.5 : 1.0)
             }
             
             // Info text
-            Text("Your library syncs automatically with iCloud. Use Force Sync Check to manually trigger a sync verification.")
+            Text("Your library syncs automatically with iCloud.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)

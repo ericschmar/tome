@@ -8,19 +8,35 @@
 import SwiftUI
 import SwiftData
 
+#if os(iOS)
+import UIKit
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        // Must be called within 30s — signals to iOS that this app reliably handles CloudKit
+        // silent pushes. Without this, iOS deprioritizes future push delivery.
+        completionHandler(.newData)
+    }
+}
+#endif
+
 @main
 struct tomeApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Book.self,
             Tag.self,
         ])
-        
-        // IMPORTANT: Explicitly specify the CloudKit container identifier
-        // This ensures both devices use the same container
-        // Replace with your actual container ID from Xcode's Signing & Capabilities
+
         let cloudKitContainerIdentifier = "iCloud.com.ericschmar.tome"
-        
+
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             cloudKitDatabase: .private(cloudKitContainerIdentifier)
@@ -32,8 +48,7 @@ struct tomeApp: App {
             // Migration failed - delete the old store and create a fresh one
             let url = modelConfiguration.url
             try? FileManager.default.removeItem(at: url)
-            
-            // Try creating the container again with fresh storage
+
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])
             } catch {

@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import SwiftData
 import Combine
+internal import CoreData
 
 /// View model for managing library state
 @MainActor
@@ -18,6 +19,7 @@ final class LibraryViewModel {
         }
     }
     private var debounceTask: Task<Void, Never>?
+    nonisolated(unsafe) private var storeChangeObserver: NSObjectProtocol?
     var selectedStatus: ReadingStatus? {
         didSet {
             applyFiltersAndSort()
@@ -63,9 +65,24 @@ final class LibraryViewModel {
         self.modelContext = modelContext
         loadBooks()
 
+        // Reload books when CloudKit imports data from another device
+        storeChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.loadBooks()
+        }
+
         // Check if search index needs building
         Task {
             await checkAndRebuildSearchIndexIfNeeded()
+        }
+    }
+
+    deinit {
+        if let observer = storeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 

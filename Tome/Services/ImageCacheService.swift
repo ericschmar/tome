@@ -48,7 +48,7 @@ final class ImageCacheService {
     func fetchImage(url: URL) async throws -> PlatformImage {
         // Check memory cache first
         if let cachedImage = memoryCache.object(forKey: url.absoluteString as NSString) {
-            print("✅ ImageCache: Found in memory cache - \(url.lastPathComponent)")
+            //print("✅ ImageCache: Found in memory cache - \(url.lastPathComponent)")
             return cachedImage
         }
 
@@ -57,38 +57,38 @@ final class ImageCacheService {
         if FileManager.default.fileExists(atPath: diskPath.path) {
             if let data = try? Data(contentsOf: diskPath),
                let image = PlatformImage.from(data: data) {
-                print("✅ ImageCache: Found in disk cache - \(url.lastPathComponent)")
+                //print("✅ ImageCache: Found in disk cache - \(url.lastPathComponent)")
                 memoryCache.setObject(image, forKey: url.absoluteString as NSString)
                 return image
             } else {
-                print("⚠️ ImageCache: Disk cache file exists but couldn't load image - \(url.lastPathComponent)")
+                //print("⚠️ ImageCache: Disk cache file exists but couldn't load image - \(url.lastPathComponent)")
                 // Remove corrupted cache file
                 try? FileManager.default.removeItem(at: diskPath)
             }
         }
 
         // Download from network
-        print("📥 ImageCache: Downloading from network - \(url.lastPathComponent)")
+        //print("📥 ImageCache: Downloading from network - \(url.lastPathComponent)")
         let (data, response) = try await session.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            print("❌ ImageCache: Invalid response type - \(url.lastPathComponent)")
+            //print("❌ ImageCache: Invalid response type - \(url.lastPathComponent)")
             throw OpenLibraryError.invalidResponse
         }
         
         guard httpResponse.statusCode == 200 else {
-            print("❌ ImageCache: HTTP error \(httpResponse.statusCode) - \(url.lastPathComponent)")
+            //print("❌ ImageCache: HTTP error \(httpResponse.statusCode) - \(url.lastPathComponent)")
             throw OpenLibraryError.invalidResponse
         }
 
         guard let image = PlatformImage.from(data: data) else {
-            print("❌ ImageCache: Failed to create image from data (\(data.count) bytes) - \(url.lastPathComponent)")
+            //print("❌ ImageCache: Failed to create image from data (\(data.count) bytes) - \(url.lastPathComponent)")
             throw OpenLibraryError.parsingError(NSError(domain: "ImageCache", code: -1, userInfo: [
                 NSLocalizedDescriptionKey: "Failed to decode image data"
             ]))
         }
 
-        print("✅ ImageCache: Successfully downloaded and created image - \(url.lastPathComponent)")
+        //print("✅ ImageCache: Successfully downloaded and created image - \(url.lastPathComponent)")
         // Cache the image
         cacheImage(image, for: url, originalData: data)
 
