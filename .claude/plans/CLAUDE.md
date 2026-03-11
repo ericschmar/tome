@@ -20,4 +20,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #3477 | 11:55 AM | ⚖️ | Implementation plan created for search bar auto-focus feature | ~318 |
+
+### Mar 5, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4837 | 9:07 PM | ✅ | Added troubleshooting guide for pre-deployment data sync issues | ~353 |
+| #4836 | 8:58 PM | 🔵 | CloudKit sync failure for TestFlight testers caused by environment mismatch | ~341 |
 </claude-mem-context>

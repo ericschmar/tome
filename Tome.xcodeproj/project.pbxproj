@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5327B1AC2F60F4830061FEF8 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5327B1AB2F60F4830061FEF8 /* CloudKit.framework */; };
 		533FAFB02F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */; };
 		533FAFB62F3EC71800EFE0CE /* tome_icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 533FAFB52F3EC71800EFE0CE /* tome_icon.icon */; };
 		5369DD972F3D13F500214A2C /* ColorSelector in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = 5369DD962F3D13F500214A2C /* ColorSelector */; };
@@ -14,6 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5327B1AB2F60F4830061FEF8 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/CloudKit.framework; sourceTree = DEVELOPER_DIR; };
 		533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLATFORM_COLOR_PICKER_GUIDE.md; sourceTree = "<group>"; };
 		533FAFB52F3EC71800EFE0CE /* tome_icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = tome_icon.icon; sourceTree = "<group>"; };
 		5381F6292F3C17B800D3F187 /* Tome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tome.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5327B1AC2F60F4830061FEF8 /* CloudKit.framework in Frameworks */,
 				537EB1B32F42C73900327A39 /* SimilaritySearchKit in Frameworks */,
 				5369DD972F3D13F500214A2C /* ColorSelector in Frameworks */,
 			);
@@ -60,6 +63,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5327B1AA2F60F4830061FEF8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5327B1AB2F60F4830061FEF8 /* CloudKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		5381F6202F3C17B800D3F187 = {
 			isa = PBXGroup;
 			children = (
@@ -67,6 +78,7 @@
 				5381F62B2F3C17B800D3F187 /* Tome */,
 				5381F62A2F3C17B800D3F187 /* Products */,
 				533FAFAF2F3D949900EFE0CE /* PLATFORM_COLOR_PICKER_GUIDE.md */,
+				5327B1AA2F60F4830061FEF8 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};

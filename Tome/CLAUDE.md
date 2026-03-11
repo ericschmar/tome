@@ -8,4 +8,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #3349 | 10:05 PM | 🔵 | App initializes with SwiftData ModelContainer and CloudKit integration | ~267 |
+
+### Mar 5, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4836 | 8:58 PM | 🔵 | CloudKit sync failure for TestFlight testers caused by environment mismatch | ~341 |
+| #4835 | 8:56 PM | 🔵 | CloudKit configuration uses development environment with personal team limitations | ~403 |
 </claude-mem-context>
