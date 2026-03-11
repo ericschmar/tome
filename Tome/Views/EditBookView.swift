@@ -69,14 +69,6 @@ struct EditBookView: View {
                 // Publication details
                 Section("Publication Details") {
                     TextField("Publisher", text: $publisher)
-
-                    HStack {
-                        TextField("Year", text: $year)
-                        TextField("Pages", text: $pageCount)
-                        CopyCountInputView(copyCount: $copyCount)
-                            .frame(maxWidth: 80)
-                    }
-
                     TextField("Language", text: $language)
                 }
 
