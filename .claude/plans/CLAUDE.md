@@ -27,4 +27,11 @@
 |----|------|---|-------|------|
 | #4837 | 9:07 PM | ✅ | Added troubleshooting guide for pre-deployment data sync issues | ~353 |
 | #4836 | 8:58 PM | 🔵 | CloudKit sync failure for TestFlight testers caused by environment mismatch | ~341 |
+
+### Mar 17, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4860 | 2:38 PM | 🔵 | Root cause identified: CloudSyncMonitor lazily initialized, missing all sync events | ~430 |
+| #4859 | 2:14 PM | 🔵 | Root cause identified: CloudSyncMonitor initialized too late to capture sync events | ~374 |
 </claude-mem-context>

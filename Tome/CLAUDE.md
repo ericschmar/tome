@@ -15,4 +15,14 @@
 |----|------|---|-------|------|
 | #4836 | 8:58 PM | 🔵 | CloudKit sync failure for TestFlight testers caused by environment mismatch | ~341 |
 | #4835 | 8:56 PM | 🔵 | CloudKit configuration uses development environment with personal team limitations | ~403 |
+
+### Mar 17, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4862 | 2:39 PM | 🟣 | Added CloudSyncMonitor initialization at app startup | ~260 |
+| #4861 | 2:38 PM | 🟣 | CloudSyncMonitor now initializes at app startup to capture early sync events | ~313 |
+| #4857 | 2:13 PM | 🔵 | CloudSyncMonitor initialized lazily instead of at app startup | ~392 |
+| #4848 | " | 🔵 | App startup migration cleans up cover image data pollution | ~359 |
+| #4845 | " | 🔵 | Located main app entry point for CloudKit configuration | ~154 |
 </claude-mem-context>

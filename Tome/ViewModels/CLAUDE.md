@@ -15,5 +15,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #4856 | 2:13 PM | 🔵 | LibraryViewModel manages filtering, sorting, and search with debouncing | ~249 |
 | #4841 | 1:34 PM | 🔴 | Fixed cover image display priority in BookCoverView | ~275 |
 </claude-mem-context>

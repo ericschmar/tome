@@ -63,6 +63,10 @@ struct tomeApp: App {
         }
     }()
 
+    // Initialize eagerly so notification observers are registered before the first
+    // NSPersistentCloudKitContainer sync events fire at startup.
+    private let syncMonitor = CloudSyncMonitor.shared
+
     @State private var navigationState = NavigationState()
 
     var body: some Scene {

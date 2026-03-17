@@ -1,4 +1,5 @@
 import SwiftUI
+import _SwiftData_SwiftUI
 #if canImport(AppKit)
 import AppKit
 #elseif canImport(UIKit)
@@ -15,6 +16,7 @@ struct SettingsView: View {
     @State private var accountService = CloudKitAccountService.shared
     @State private var showingDiagnostics = false
     @State private var diagnosticsCopied = false
+    @Query private var allBooks: [Book]
     
     var body: some View {
         VStack(spacing: 0) {
@@ -378,6 +380,7 @@ struct SettingsView: View {
             diagnosticsRow(label: "Container", value: "iCloud.com.ericschmar.tome")
             diagnosticsRow(label: "Account Status", value: accountService.statusMessage)
             diagnosticsRow(label: "User Record ID", value: accountService.userRecordIDString ?? "Unavailable")
+            diagnosticsRow(label: "Local Books", value: "\(allBooks.count)")
             diagnosticsRow(label: "Last Sync", value: syncMonitor.lastSyncFormatted)
             if let error = syncMonitor.lastError {
                 diagnosticsRow(label: "Last Error", value: error.localizedDescription, isError: true)
@@ -457,6 +460,7 @@ struct SettingsView: View {
             "Container: iCloud.com.ericschmar.tome",
             "Account Status: \(accountService.statusMessage)",
             "User Record ID: \(accountService.userRecordIDString ?? "Unavailable")",
+            "Local Books: \(allBooks.count)",
             "Last Sync: \(syncMonitor.lastSyncFormatted)",
         ]
         if let error = syncMonitor.lastError {
