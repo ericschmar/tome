@@ -100,21 +100,24 @@ class CloudSyncMonitor {
             if event.succeeded {
                 logger.info("Sync \(typeName) succeeded")
                 errorSummary = nil
-            } else if let error = event.error as? CKError {
-                logger.error("Sync \(typeName) failed: \(error.localizedDescription)")
-                if error.code == .partialFailure,
-                   let partialErrors = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
-                    for (itemID, itemError) in partialErrors {
-                        logger.error("  Record \(String(describing: itemID)): \(itemError.localizedDescription)")
-                    }
-                    let details = partialErrors.map { "\($0.key): \($0.value.localizedDescription)" }.joined(separator: "; ")
-                    errorSummary = "Partial failure (\(partialErrors.count) records): \(details)"
-                } else {
-                    errorSummary = error.localizedDescription
-                }
             } else if let error = event.error {
-                logger.error("Sync \(typeName) failed: \(error.localizedDescription)")
-                errorSummary = error.localizedDescription
+                let nsError = error as NSError
+                logger.error("Sync \(typeName) failed: \(nsError.domain) \(nsError.code) — \(nsError.localizedDescription)")
+
+                if nsError.domain == CKErrorDomain,
+                   nsError.code == CKError.Code.partialFailure.rawValue,
+                   let partialErrors = nsError.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
+                    for (itemID, itemError) in partialErrors {
+                        let sub = itemError as NSError
+                        logger.error("  Record \(String(describing: itemID)): \(sub.domain) \(sub.code) — \(sub.localizedDescription)")
+                    }
+                    // Summarize unique sub-error codes for the UI
+                    let subCodes = Dictionary(grouping: partialErrors.values, by: { ($0 as NSError).code })
+                    let summary = subCodes.map { "\($0.value.count)x code \($0.key)" }.sorted().joined(separator: ", ")
+                    errorSummary = "Partial failure (\(partialErrors.count) records): \(summary)"
+                } else {
+                    errorSummary = "\(nsError.domain) \(nsError.code): \(nsError.localizedDescription)"
+                }
             } else {
                 errorSummary = nil
             }
