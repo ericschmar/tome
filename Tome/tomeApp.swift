@@ -32,6 +32,10 @@ struct tomeApp: App {
     #if os(iOS)
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #endif
+
+    /// Set to the backup URL if the store was nuked at startup, so the UI can warn the user.
+    static var storeResetBackupURL: URL? = nil
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Book.self,
@@ -48,12 +52,28 @@ struct tomeApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            // Migration failed - delete the old store and create a fresh one
+            // Migration failed - back up the corrupt store, then delete it and start fresh.
             // ⚠️ WARNING: This path destroys local data and restarts from scratch.
             // If this fires, CloudKit sync will not have the lost records.
             logger.error("ModelContainer init failed, nuking local store: \(error)")
-            let url = modelConfiguration.url
-            try? FileManager.default.removeItem(at: url)
+
+            let storeURL = modelConfiguration.url
+            let fm = FileManager.default
+
+            // Back up the SQLite triplet (.sqlite, .sqlite-wal, .sqlite-shm) before deleting.
+            let backupDir = storeURL.deletingLastPathComponent()
+                .appendingPathComponent("StoreBackup-\(Int(Date().timeIntervalSince1970))", isDirectory: true)
+            if (try? fm.createDirectory(at: backupDir, withIntermediateDirectories: true)) != nil {
+                for ext in ["", "-wal", "-shm"] {
+                    let src = URL(fileURLWithPath: storeURL.path + ext)
+                    let dst = backupDir.appendingPathComponent(src.lastPathComponent)
+                    try? fm.copyItem(at: src, to: dst)
+                }
+                tomeApp.storeResetBackupURL = backupDir
+                logger.info("Corrupt store backed up to: \(backupDir.path)")
+            }
+
+            try? fm.removeItem(at: storeURL)
 
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -68,6 +88,7 @@ struct tomeApp: App {
     private let syncMonitor = CloudSyncMonitor.shared
 
     @State private var navigationState = NavigationState()
+    @State private var showStoreResetAlert = false
 
     var body: some Scene {
         WindowGroup("Tome") {
@@ -76,6 +97,18 @@ struct tomeApp: App {
                 .applyAppTheme()
                 .task {
                     await migrateLibraryCoverData()
+                }
+                .onAppear {
+                    showStoreResetAlert = tomeApp.storeResetBackupURL != nil
+                }
+                .alert("Library Reset", isPresented: $showStoreResetAlert) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    if let backupURL = tomeApp.storeResetBackupURL {
+                        Text("The local database could not be opened and was reset. A backup was saved to:\n\n\(backupURL.path)\n\nIf you have iCloud sync enabled, your books should restore automatically.")
+                    } else {
+                        Text("The local database could not be opened and was reset. If you have iCloud sync enabled, your books should restore automatically.")
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)

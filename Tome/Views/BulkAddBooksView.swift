@@ -222,6 +222,9 @@ struct BulkAddBooksView: View {
                 }
             }
         }
+        .onChange(of: viewModel.isbnAutoAddToggle) {
+            isSearchFocused = true
+        }
         .onAppear {
             // Delay focus slightly to ensure view is fully presented
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -329,6 +332,8 @@ final class BulkAddViewModel {
     var isSearching: Bool = false
     var hasSearched: Bool = false
     var isAdding: Bool = false
+    /// Toggled each time an ISBN auto-add occurs so the view can refocus the search field.
+    var isbnAutoAddToggle: Bool = false
 
     private let searchService = OpenLibraryService.shared
     private var searchTask: Task<Void, Never>?
@@ -356,12 +361,19 @@ final class BulkAddViewModel {
                     guard !Task.isCancelled else { return }
                     await MainActor.run {
                         if let result = result {
-                            self.searchResults = [result]
+                            // Exact ISBN match — skip the selection UI and add directly.
+                            if !self.isSelected(result) {
+                                self.toggleSelection(result)
+                            }
+                            self.searchResults = []
+                            self.searchQuery = ""
+                            self.hasSearched = false
+                            self.isbnAutoAddToggle.toggle()
                         } else {
                             self.searchResults = []
+                            self.hasSearched = true
                         }
                         self.isSearching = false
-                        self.hasSearched = true
                     }
                 } else {
                     // Regular search
