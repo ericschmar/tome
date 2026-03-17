@@ -11,4 +11,10 @@
 | #3289 | " | 🔵 | Completed comprehensive book detail view analysis | ~271 |
 | #3278 | 8:10 PM | 🔵 | Analyzed FlowingLayout implementation | ~215 |
 | #3275 | " | 🔵 | Analyzed LanguageBadge component implementation | ~230 |
+
+### Mar 17, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4841 | 1:34 PM | 🔴 | Fixed cover image display priority in BookCoverView | ~275 |
 </claude-mem-context>

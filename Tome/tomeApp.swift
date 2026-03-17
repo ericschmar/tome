@@ -70,8 +70,39 @@ struct tomeApp: App {
             NavigationRootView()
                 .environment(navigationState)
                 .applyAppTheme()
+                .task {
+                    await migrateLibraryCoverData()
+                }
         }
         .modelContainer(sharedModelContainer)
         .defaultSize(width: 1440, height: 900)
+    }
+
+    /// One-time migration: nil out coverImageData for OpenLibrary books (those with a coverID).
+    /// These books have a coverURL and the ImageCacheService will serve them from disk or re-fetch.
+    /// User-uploaded images (no coverID) are left alone; @Attribute(.externalStorage) on
+    /// coverImageData ensures they sync to CloudKit as a CKAsset.
+    private func migrateLibraryCoverData() async {
+        let key = "didMigrateCoverDataToExternalV1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+
+        let context = sharedModelContainer.mainContext
+        let descriptor = FetchDescriptor<Book>(
+            predicate: #Predicate { $0.coverImageData != nil }
+        )
+
+        do {
+            let books = try context.fetch(descriptor)
+            let toMigrate = books.filter { $0.coverID != nil }
+            logger.info("Cover migration: \(toMigrate.count) OpenLibrary books, \(books.count - toMigrate.count) user-uploaded books")
+            for book in toMigrate {
+                book.coverImageData = nil
+            }
+            try context.save()
+            UserDefaults.standard.set(true, forKey: key)
+            logger.info("Cover migration complete")
+        } catch {
+            logger.error("Cover migration failed: \(error)")
+        }
     }
 }

@@ -10,7 +10,7 @@ final class Book {
     var isbn10: String?
     var isbn13: String?
     var coverID: Int?
-    var coverImageData: Data?
+    @Attribute(.externalStorage) var coverImageData: Data?
     var firstPublishYear: Int?
     var bookDescription: String?
     var publishers: [String] = []

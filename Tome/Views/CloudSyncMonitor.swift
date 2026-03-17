@@ -96,17 +96,34 @@ class CloudSyncMonitor {
             case .export: typeName = "Export"
             @unknown default: typeName = "Unknown"
             }
+            let errorSummary: String?
             if event.succeeded {
                 logger.info("Sync \(typeName) succeeded")
+                errorSummary = nil
+            } else if let error = event.error as? CKError {
+                logger.error("Sync \(typeName) failed: \(error.localizedDescription)")
+                if error.code == .partialFailure,
+                   let partialErrors = error.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
+                    for (itemID, itemError) in partialErrors {
+                        logger.error("  Record \(String(describing: itemID)): \(itemError.localizedDescription)")
+                    }
+                    let details = partialErrors.map { "\($0.key): \($0.value.localizedDescription)" }.joined(separator: "; ")
+                    errorSummary = "Partial failure (\(partialErrors.count) records): \(details)"
+                } else {
+                    errorSummary = error.localizedDescription
+                }
             } else if let error = event.error {
                 logger.error("Sync \(typeName) failed: \(error.localizedDescription)")
+                errorSummary = error.localizedDescription
+            } else {
+                errorSummary = nil
             }
 
             let entry = SyncEvent(
                 date: event.endDate ?? Date(),
                 type: typeName,
                 succeeded: event.succeeded,
-                errorDescription: event.error?.localizedDescription
+                errorDescription: errorSummary
             )
             eventLog.insert(entry, at: 0)
             if eventLog.count > 30 { eventLog.removeLast() }

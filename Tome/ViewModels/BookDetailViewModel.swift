@@ -109,23 +109,9 @@ final class BookDetailViewModel {
 
     private func fetchCoverImage(from url: URL) async {
         do {
-            let image = try await imageCache.fetchImage(url: url)
-            coverImage = image
-
-            // Optionally save to book - handle platform-specific image data
-            #if canImport(AppKit)
-            if let tiffData = image.tiffRepresentation {
-                book.coverImageData = tiffData
-                try? modelContext.save()
-            }
-            #elseif canImport(UIKit)
-            if let pngData = image.pngData() {
-                book.coverImageData = pngData
-                try? modelContext.save()
-            }
-            #endif
+            coverImage = try await imageCache.fetchImage(url: url)
         } catch {
-            print("Failed to fetch cover image: \(error)")
+            // ImageCacheService handles disk caching; no need to persist to the book model
         }
     }
 

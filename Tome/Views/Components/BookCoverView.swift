@@ -33,15 +33,16 @@ struct BookCoverView: View {
 
     var body: some View {
         Group {
-            if let image = image {
-                Image(platformImage: image)
+            // User-uploaded image data takes priority over URL-loaded image
+            if let coverImageData = coverImageData,
+               let platformImage = PlatformImage.from(data: coverImageData) {
+                Image(platformImage: platformImage)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
                     .aspectRatio(contentMode: .fill)
-            } else if let coverImageData = coverImageData,
-                      let platformImage = PlatformImage.from(data: coverImageData) {
-                Image(platformImage: platformImage)
+            } else if let image = image {
+                Image(platformImage: image)
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
@@ -75,7 +76,10 @@ struct BookCoverView: View {
     }
 
     private func loadImage() async {
-        guard let coverURL = coverURL else { return }
+        guard let coverURL = coverURL else {
+            image = nil  // Clear stale URL-loaded image when cover URL is removed
+            return
+        }
 
         isLoading = true
 
