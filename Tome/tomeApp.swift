@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+import OSLog
+
+private let logger = Logger(subsystem: "com.ericschmar.tome", category: "startup")
 
 #if os(iOS)
 import UIKit
@@ -46,6 +49,9 @@ struct tomeApp: App {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             // Migration failed - delete the old store and create a fresh one
+            // ⚠️ WARNING: This path destroys local data and restarts from scratch.
+            // If this fires, CloudKit sync will not have the lost records.
+            logger.error("ModelContainer init failed, nuking local store: \(error)")
             let url = modelConfiguration.url
             try? FileManager.default.removeItem(at: url)
 

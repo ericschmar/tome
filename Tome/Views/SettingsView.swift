@@ -1,4 +1,9 @@
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 
 /// Settings view for app preferences
 struct SettingsView: View {
@@ -7,6 +12,9 @@ struct SettingsView: View {
     @State private var showingClearCacheAlert = false
     @State private var cacheSize: String = "Calculating..."
     @State private var syncMonitor = CloudSyncMonitor.shared
+    @State private var accountService = CloudKitAccountService.shared
+    @State private var showingDiagnostics = false
+    @State private var diagnosticsCopied = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -45,6 +53,14 @@ struct SettingsView: View {
                     // Storage section
                     settingsSection(title: "Storage") {
                         cacheManagement
+                    }
+
+                    Divider()
+                        .padding(.horizontal, 20)
+
+                    // Diagnostics section
+                    settingsSection(title: "Diagnostics") {
+                        diagnosticsSection
                     }
                 }
                 .padding(.vertical, 20)
@@ -309,8 +325,163 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Diagnostics
+
+    private var diagnosticsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Collapsible header
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingDiagnostics.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("Sync Diagnostics")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: showingDiagnostics ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 20)
+            }
+            .buttonStyle(.plain)
+
+            if showingDiagnostics {
+                VStack(alignment: .leading, spacing: 8) {
+                    diagnosticsRows
+                    if !syncMonitor.eventLog.isEmpty {
+                        Divider().padding(.horizontal, 20)
+                        Text("Recent Sync Events")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 20)
+                        ForEach(syncMonitor.eventLog.prefix(10)) { entry in
+                            diagnosticsEventRow(entry)
+                        }
+                    }
+                    copyDiagnosticsButton
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            Text("Share these details when reporting sync issues.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+        }
+    }
+
+    private var diagnosticsRows: some View {
+        VStack(spacing: 0) {
+            diagnosticsRow(label: "Container", value: "iCloud.com.ericschmar.tome")
+            diagnosticsRow(label: "Account Status", value: accountService.statusMessage)
+            diagnosticsRow(label: "User Record ID", value: accountService.userRecordIDString ?? "Unavailable")
+            diagnosticsRow(label: "Last Sync", value: syncMonitor.lastSyncFormatted)
+            if let error = syncMonitor.lastError {
+                diagnosticsRow(label: "Last Error", value: error.localizedDescription, isError: true)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.06)))
+        .padding(.horizontal, 20)
+    }
+
+    private func diagnosticsRow(label: String, value: String, isError: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 110, alignment: .leading)
+            Text(value)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(isError ? .red : .primary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func diagnosticsEventRow(_ entry: CloudSyncMonitor.SyncEvent) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: entry.succeeded ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(entry.succeeded ? .green : .red)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(entry.type) — \(entry.date.formatted(.dateTime.month().day().hour().minute().second()))")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.primary)
+                if let err = entry.errorDescription {
+                    Text(err)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var copyDiagnosticsButton: some View {
+        Button {
+            copyDiagnosticsToClipboard()
+            diagnosticsCopied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                diagnosticsCopied = false
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: diagnosticsCopied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 12))
+                Text(diagnosticsCopied ? "Copied!" : "Copy Diagnostics")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundStyle(diagnosticsCopied ? .green : .accentColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill((diagnosticsCopied ? Color.green : Color.accentColor).opacity(0.1))
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+        .animation(.easeInOut(duration: 0.2), value: diagnosticsCopied)
+    }
+
+    private func copyDiagnosticsToClipboard() {
+        var lines: [String] = [
+            "=== Tome Sync Diagnostics ===",
+            "Date: \(Date().formatted())",
+            "Container: iCloud.com.ericschmar.tome",
+            "Account Status: \(accountService.statusMessage)",
+            "User Record ID: \(accountService.userRecordIDString ?? "Unavailable")",
+            "Last Sync: \(syncMonitor.lastSyncFormatted)",
+        ]
+        if let error = syncMonitor.lastError {
+            lines.append("Last Error: \(error.localizedDescription)")
+        }
+        if !syncMonitor.eventLog.isEmpty {
+            lines.append("\nRecent Events:")
+            for entry in syncMonitor.eventLog.prefix(20) {
+                let status = entry.succeeded ? "✓" : "✗"
+                var line = "  \(status) [\(entry.date.formatted(.dateTime.month().day().hour().minute().second()))] \(entry.type)"
+                if let err = entry.errorDescription { line += " — \(err)" }
+                lines.append(line)
+            }
+        }
+        let report = lines.joined(separator: "\n")
+        #if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
+        #elseif canImport(UIKit)
+        UIPasteboard.general.string = report
+        #endif
+    }
+
     // MARK: - Actions
-    
+
     private func updateCacheSize() {
         cacheSize = settings.getImageCacheSize()
     }

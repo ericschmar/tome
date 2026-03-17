@@ -1,8 +1,11 @@
 import Foundation
+import OSLog
 import SwiftData
 import Combine
 internal import CoreData
 internal import CloudKit
+
+private let logger = Logger(subsystem: "com.ericschmar.tome", category: "cloudkit-sync")
 
 /// Monitors iCloud sync progress for SwiftData
 @MainActor
@@ -21,6 +24,17 @@ class CloudSyncMonitor {
 
     /// Last successful sync timestamp
     var lastSyncDate: Date?
+
+    struct SyncEvent: Identifiable {
+        let id = UUID()
+        let date: Date
+        let type: String
+        let succeeded: Bool
+        let errorDescription: String?
+    }
+
+    /// Rolling log of the last 30 sync events
+    var eventLog: [SyncEvent] = []
 
     private var isSetUp = false
     nonisolated(unsafe) private var cancellables = Set<AnyCancellable>()
@@ -74,6 +88,28 @@ class CloudSyncMonitor {
             if event.succeeded && event.type == .import { lastSyncDate = event.endDate }
             isSyncing = false
             syncProgress = 1.0
+
+            let typeName: String
+            switch event.type {
+            case .setup: typeName = "Setup"
+            case .import: typeName = "Import"
+            case .export: typeName = "Export"
+            @unknown default: typeName = "Unknown"
+            }
+            if event.succeeded {
+                logger.info("Sync \(typeName) succeeded")
+            } else if let error = event.error {
+                logger.error("Sync \(typeName) failed: \(error.localizedDescription)")
+            }
+
+            let entry = SyncEvent(
+                date: event.endDate ?? Date(),
+                type: typeName,
+                succeeded: event.succeeded,
+                errorDescription: event.error?.localizedDescription
+            )
+            eventLog.insert(entry, at: 0)
+            if eventLog.count > 30 { eventLog.removeLast() }
         }
     }
 

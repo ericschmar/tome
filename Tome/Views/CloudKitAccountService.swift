@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 internal import CloudKit
 #if canImport(AppKit)
 import AppKit
@@ -6,14 +7,17 @@ import AppKit
 import UIKit
 #endif
 
+private let logger = Logger(subsystem: "com.ericschmar.tome", category: "cloudkit-account")
+
 /// Service to fetch and manage CloudKit account information
 @MainActor
 @Observable
 class CloudKitAccountService {
     static let shared = CloudKitAccountService()
-    
+
     var accountStatus: CKAccountStatus = .couldNotDetermine
     var userDisplayName: String?
+    var userRecordIDString: String?
     #if canImport(AppKit)
     var userPhoto: NSImage?
     #elseif canImport(UIKit)
@@ -22,36 +26,27 @@ class CloudKitAccountService {
     var isLoading = false
     var error: Error?
     var isCloudKitEnabled = false
-    
+
     private var container: CKContainer?
-    
+
     private init() {
-        // For personal development teams, CloudKit won't work
-        // This will be nil if entitlements aren't configured
-        
-        // Debug: Print container identifier
-        #if DEBUG
         let container = CKContainer.default()
-        print("🔍 CloudKit Container ID: \(container.containerIdentifier ?? "nil")")
-        #endif
+        logger.debug("CloudKit container ID: \(container.containerIdentifier ?? "nil")")
         Task {
             await fetchAccountInfo()
         }
     }
-    
+
     /// Fetch the current iCloud account status and user information
     func fetchAccountInfo() async {
         isLoading = true
         error = nil
-        
-        // Try to initialize CloudKit container lazily
-        // This will fail for personal development teams without entitlements
+
         if container == nil {
             container = CKContainer.default()
         }
-        
+
         guard let container = container else {
-            // CloudKit not available - set a friendly error
             self.error = NSError(
                 domain: "CloudKitAccountService",
                 code: -1,
@@ -60,139 +55,98 @@ class CloudKitAccountService {
             isCloudKitEnabled = false
             accountStatus = .noAccount
             userDisplayName = "Local User"
-            #if canImport(AppKit)
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-            #elseif canImport(UIKit)
-            userPhoto = UIImage(systemName: "person.circle.fill")
-            #endif
+            setDefaultPhoto()
             isLoading = false
             return
         }
-        
+
         do {
-            // Check account status first - this is a simple call that should work
             accountStatus = try await container.accountStatus()
-            print("🔍 CloudKit Account Status: \(accountStatus.rawValue)")
-            
+            logger.info("Account status: \(self.accountStatus.rawValue)")
+
             guard accountStatus == .available else {
-                // Not an error condition - user just isn't signed into iCloud
-                if accountStatus == .noAccount {
-                    print("ℹ️ CloudKitAccountService: User is not signed into iCloud")
-                } else if accountStatus == .restricted {
-                    print("⚠️ CloudKitAccountService: iCloud access is restricted")
-                } else if accountStatus == .temporarilyUnavailable {
-                    print("⚠️ CloudKitAccountService: iCloud is temporarily unavailable")
+                switch accountStatus {
+                case .noAccount:
+                    logger.info("User is not signed into iCloud")
+                case .restricted:
+                    logger.warning("iCloud access is restricted")
+                case .temporarilyUnavailable:
+                    logger.warning("iCloud is temporarily unavailable")
+                default:
+                    break
                 }
                 isCloudKitEnabled = false
                 userDisplayName = "Local User"
-                #if canImport(AppKit)
-                userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-                #elseif canImport(UIKit)
-                userPhoto = UIImage(systemName: "person.circle.fill")
-                #endif
+                setDefaultPhoto()
                 isLoading = false
                 return
             }
-            
-            print("✅ CloudKit account is available")
+
             isCloudKitEnabled = true
-            
-            // Fetch user record ID to verify CloudKit access
+
             let userRecordID = try await container.userRecordID()
-            print("✅ Got user record ID: \(userRecordID.recordName)")
-            
-            // Use system user name for display
-            // Note: The discoverUserIdentity API was deprecated in macOS 14.0 and is no longer
-            // supported. For displaying the current user's name, we use the system user name.
-            // User identity discovery was primarily for finding other users for sharing purposes.
+            userRecordIDString = userRecordID.recordName
+            logger.info("User record ID: \(userRecordID.recordName)")
+
             userDisplayName = NSFullUserName().isEmpty ? "iCloud User" : NSFullUserName()
-            print("✅ Using system user name: \(userDisplayName ?? "unknown")")
-            
-            // Set default user photo
-            #if canImport(AppKit)
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-            #elseif canImport(UIKit)
-            userPhoto = UIImage(systemName: "person.circle.fill")
-            #endif
-            
+            logger.debug("Display name: \(self.userDisplayName ?? "unknown")")
+
+            setDefaultPhoto()
             isLoading = false
         } catch let ckError as CKError {
-            // Handle specific CloudKit errors
             switch ckError.code {
             case .notAuthenticated:
-                print("ℹ️ CloudKitAccountService: User is not authenticated with iCloud")
-                print("   This usually means CloudKit container is not properly configured in entitlements")
+                logger.error("Not authenticated with iCloud — check entitlements")
             case .networkUnavailable, .networkFailure:
-                print("⚠️ CloudKitAccountService: Network issue - \(ckError.localizedDescription)")
+                logger.error("Network issue: \(ckError.localizedDescription)")
             case .permissionFailure:
-                print("⚠️ CloudKitAccountService: Permission denied for iCloud access")
-                print("   Check that the app has iCloud capability enabled")
+                logger.error("Permission denied for iCloud access")
             case .badContainer:
-                print("❌ CloudKitAccountService: Bad container configuration")
-                print("   The CloudKit container identifier may be incorrect or not configured")
+                logger.error("Bad container configuration — check container identifier")
             default:
-                print("❌ CloudKitAccountService: CloudKit error - \(ckError.localizedDescription)")
-                print("   Error code: \(ckError.code.rawValue)")
-                print("   User info: \(ckError.errorUserInfo)")
+                logger.error("CKError \(ckError.code.rawValue): \(ckError.localizedDescription) — \(ckError.errorUserInfo)")
             }
-            
+
             self.error = ckError
             isCloudKitEnabled = false
-            // Try to preserve account status if we already have it, otherwise default to noAccount
             if accountStatus == .couldNotDetermine {
                 accountStatus = .noAccount
             }
             userDisplayName = "Local User"
-            #if canImport(AppKit)
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-            #elseif canImport(UIKit)
-            userPhoto = UIImage(systemName: "person.circle.fill")
-            #endif
+            setDefaultPhoto()
             isLoading = false
         } catch {
-            // Non-CloudKit errors
+            logger.error("Unexpected error: \(error.localizedDescription)")
             self.error = error
             isCloudKitEnabled = false
             accountStatus = .noAccount
             userDisplayName = "Local User"
-            #if canImport(AppKit)
-            userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
-            #elseif canImport(UIKit)
-            userPhoto = UIImage(systemName: "person.circle.fill")
-            #endif
+            setDefaultPhoto()
             isLoading = false
-            print("❌ CloudKitAccountService: Unexpected error - \(error.localizedDescription)")
         }
     }
-    
-    /// Attempt to fetch user photo from system
-    private func fetchUserPhotoFromContacts() async {
-        // For now, we'll use the default user image
-        // TODO: In a production app, you might want to use Contacts framework
-        // or let the user set a custom profile photo
+
+    private func setDefaultPhoto() {
         #if canImport(AppKit)
         userPhoto = NSImage(systemSymbolName: "person.circle.fill", accessibilityDescription: nil)
         #elseif canImport(UIKit)
         userPhoto = UIImage(systemName: "person.circle.fill")
         #endif
     }
-    
-    /// Returns a placeholder name if no user name is available
+
     var displayName: String {
         userDisplayName ?? "Local User"
     }
-    
-    /// Returns whether the account is available
+
     var isAccountAvailable: Bool {
         isCloudKitEnabled && accountStatus == .available
     }
-    
-    /// Returns a user-friendly status message
+
     var statusMessage: String {
         if !isCloudKitEnabled {
             return "Cloud Not Enabled"
         }
-        
+
         switch accountStatus {
         case .available:
             if userDisplayName == "iCloud User" {
