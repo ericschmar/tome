@@ -7,6 +7,36 @@ struct NavigationRootView: View {
     @Environment(NavigationState.self) private var navigationState
     @State private var viewModel: LibraryViewModel?
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var pendingDestination: NavigationDestination? = nil
+    @State private var showBulkDiscardConfirmation = false
+
+    /// Binding that intercepts navigation away from bulk add when there are pending books.
+    private var destinationBinding: Binding<NavigationDestination> {
+        Binding(
+            get: { navigationState.selectedDestination },
+            set: { newValue in
+                if navigationState.selectedDestination == .addBookBulk,
+                   navigationState.pendingBulkAddCount > 0,
+                   newValue != .addBookBulk {
+                    pendingDestination = newValue
+                    showBulkDiscardConfirmation = true
+                } else {
+                    applyDestination(newValue)
+                }
+            }
+        )
+    }
+
+    private func applyDestination(_ newValue: NavigationDestination) {
+        navigationState.selectedDestination = newValue
+        viewModel?.setSelectedDestination(newValue)
+        switch newValue {
+        case .addBookSearch, .addBookManual, .addBookBulk, .settings:
+            navigationState.selectedBook = nil
+        default:
+            break
+        }
+    }
 
     var body: some View {
         #if os(iOS)
@@ -25,21 +55,7 @@ struct NavigationRootView: View {
                     }
                     .transition(.opacity)
 
-                LibrarySidebar(
-                    selectedDestination: Binding(
-                        get: { navigationState.selectedDestination },
-                        set: { newValue in
-                            navigationState.selectedDestination = newValue
-                            viewModel?.setSelectedDestination(newValue)
-                            switch newValue {
-                            case .addBookSearch, .addBookManual, .addBookBulk, .settings:
-                                navigationState.selectedBook = nil
-                            default:
-                                break
-                            }
-                        }
-                    )
-                )
+                LibrarySidebar(selectedDestination: destinationBinding)
                 .frame(width: 280)
                 .background(
                     Color(.systemBackground)
@@ -61,28 +77,31 @@ struct NavigationRootView: View {
                 navigationState.isSidebarPresented = false
             }
         }
+        .confirmationDialog(
+            "Discard \(navigationState.pendingBulkAddCount) book(s)?",
+            isPresented: $showBulkDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) {
+                navigationState.pendingBulkAddCount = 0
+                if let destination = pendingDestination {
+                    applyDestination(destination)
+                    pendingDestination = nil
+                }
+            }
+            Button("Keep Editing", role: .cancel) {
+                pendingDestination = nil
+            }
+        } message: {
+            Text("You have \(navigationState.pendingBulkAddCount) book(s) queued to add. They will not be saved if you leave.")
+        }
         #else
         Group {
             // Use different layouts based on whether the destination needs a detail pane
             if shouldShowDetailPane(navigationState.selectedDestination) {
                 // Three-column layout for destinations with detail pane
                 NavigationSplitView(columnVisibility: $columnVisibility) {
-                    LibrarySidebar(
-                        selectedDestination: Binding(
-                            get: { navigationState.selectedDestination },
-                            set: { newValue in
-                                navigationState.selectedDestination = newValue
-                                viewModel?.setSelectedDestination(newValue)
-                                // Clear selected book/result when navigating to non-library destinations
-                                switch newValue {
-                                case .addBookSearch, .addBookManual, .addBookBulk, .settings:
-                                    navigationState.selectedBook = nil
-                                default:
-                                    break
-                                }
-                            }
-                        )
-                    )
+                    LibrarySidebar(selectedDestination: destinationBinding)
                     .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
                 } content: {
                     contentForDestination(navigationState.selectedDestination)
@@ -94,22 +113,7 @@ struct NavigationRootView: View {
             } else {
                 // Two-column layout for destinations without detail pane
                 NavigationSplitView(columnVisibility: $columnVisibility) {
-                    LibrarySidebar(
-                        selectedDestination: Binding(
-                            get: { navigationState.selectedDestination },
-                            set: { newValue in
-                                navigationState.selectedDestination = newValue
-                                viewModel?.setSelectedDestination(newValue)
-                                // Clear selected book when navigating away from library
-                                switch newValue {
-                                case .addBookSearch, .addBookManual, .addBookBulk, .settings:
-                                    navigationState.selectedBook = nil
-                                default:
-                                    break
-                                }
-                            }
-                        )
-                    )
+                    LibrarySidebar(selectedDestination: destinationBinding)
                     .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
                 } detail: {
                     // In two-column mode, the "detail" is actually the main content
@@ -123,6 +127,24 @@ struct NavigationRootView: View {
                 // Sync the initial destination with navigation state
                 viewModel?.setSelectedDestination(navigationState.selectedDestination)
             }
+        }
+        .confirmationDialog(
+            "Discard \(navigationState.pendingBulkAddCount) book(s)?",
+            isPresented: $showBulkDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) {
+                navigationState.pendingBulkAddCount = 0
+                if let destination = pendingDestination {
+                    applyDestination(destination)
+                    pendingDestination = nil
+                }
+            }
+            Button("Keep Editing", role: .cancel) {
+                pendingDestination = nil
+            }
+        } message: {
+            Text("You have \(navigationState.pendingBulkAddCount) book(s) queued to add. They will not be saved if you leave.")
         }
         #endif
     }

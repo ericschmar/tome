@@ -4,8 +4,10 @@ import SwiftData
 /// View for bulk adding multiple books to the library
 struct BulkAddBooksView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(NavigationState.self) private var navigationState
     @State private var viewModel = BulkAddViewModel()
     @FocusState private var isSearchFocused: Bool
+    @State private var showCancelConfirmation = false
     
     let onComplete: () -> Void
     
@@ -62,6 +64,20 @@ struct BulkAddBooksView: View {
                             }
                         }
                         .padding(.horizontal)
+                    }
+                    .frame(height: 240)
+                } else if let error = viewModel.searchError {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                        Button("Dismiss") {
+                            viewModel.searchError = nil
+                        }
+                        .buttonStyle(.bordered)
                     }
                     .frame(height: 240)
                 } else if viewModel.hasSearched {
@@ -191,9 +207,26 @@ struct BulkAddBooksView: View {
                 Spacer()
                 
                 Button("Cancel") {
-                    onComplete()
+                    if viewModel.selectedBooks.isEmpty {
+                        onComplete()
+                    } else {
+                        showCancelConfirmation = true
+                    }
                 }
                 .keyboardShortcut(.cancelAction)
+                .confirmationDialog(
+                    "Discard \(viewModel.selectedBooks.count) book(s)?",
+                    isPresented: $showCancelConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Discard", role: .destructive) {
+                        navigationState.pendingBulkAddCount = 0
+                        onComplete()
+                    }
+                    Button("Keep Editing", role: .cancel) { }
+                } message: {
+                    Text("You have \(viewModel.selectedBooks.count) book(s) queued to add. They will not be saved if you cancel.")
+                }
                 
                 Button("Add \(viewModel.selectedBooks.count) Book(s)") {
                     addBooksToLibrary()
@@ -215,12 +248,21 @@ struct BulkAddBooksView: View {
             }
         }
         .onChange(of: viewModel.searchQuery) { oldValue, newValue in
+            if viewModel.searchError != nil {
+                viewModel.searchError = nil
+            }
             // Auto-search when ISBN format is detected (10 or 13 digits)
             if viewModel.isISBNQuery && (newValue.filter { $0.isNumber }.count == 10 || newValue.filter { $0.isNumber }.count == 13) {
                 Task {
                     await viewModel.performSearch()
                 }
             }
+        }
+        .onChange(of: viewModel.selectedBooks.count) { _, count in
+            navigationState.pendingBulkAddCount = count
+        }
+        .onDisappear {
+            navigationState.pendingBulkAddCount = 0
         }
         .onChange(of: viewModel.isbnAutoAddToggle) {
             isSearchFocused = true
@@ -256,6 +298,7 @@ struct BulkAddBooksView: View {
         // Save context
         do {
             try modelContext.save()
+            navigationState.pendingBulkAddCount = 0
             onComplete()
         } catch {
             print("Error saving books: \(error)")
@@ -332,6 +375,7 @@ final class BulkAddViewModel {
     var isSearching: Bool = false
     var hasSearched: Bool = false
     var isAdding: Bool = false
+    var searchError: String? = nil
     /// Toggled each time an ISBN auto-add occurs so the view can refocus the search field.
     var isbnAutoAddToggle: Bool = false
 
@@ -349,6 +393,7 @@ final class BulkAddViewModel {
 
         isSearching = true
         hasSearched = false
+        searchError = nil
 
         searchTask = Task {
             do {
@@ -358,7 +403,10 @@ final class BulkAddViewModel {
                     let result = try await withTimeout(15.0) {
                         try await self.searchService.lookupByISBN(isbn)
                     }
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled else {
+                        await MainActor.run { self.isSearching = false }
+                        return
+                    }
                     await MainActor.run {
                         if let result = result {
                             // Exact ISBN match — skip the selection UI and add directly.
@@ -380,7 +428,10 @@ final class BulkAddViewModel {
                     let results = try await withTimeout(15.0) {
                         try await self.searchService.searchBooks(query: self.searchQuery)
                     }
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled else {
+                        await MainActor.run { self.isSearching = false }
+                        return
+                    }
                     await MainActor.run {
                         self.searchResults = results
                         self.isSearching = false
@@ -388,13 +439,20 @@ final class BulkAddViewModel {
                     }
                 }
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else {
+                    await MainActor.run { self.isSearching = false }
+                    return
+                }
                 await MainActor.run {
                     self.searchResults = []
                     self.isSearching = false
-                    self.hasSearched = true
+                    self.hasSearched = false
+                    if let libError = error as? OpenLibraryError, case .timeout = libError {
+                        self.searchError = "Search timed out. Please try again."
+                    } else {
+                        self.searchError = "Search failed. Please check your connection and try again."
+                    }
                 }
-                print("Search error: \(error)")
             }
         }
 

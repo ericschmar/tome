@@ -22,6 +22,9 @@ final class NavigationState {
     /// Column visibility state
     var columnVisibility: NavigationSplitViewVisibility = .all
 
+    /// Number of books pending in BulkAddBooksView — used to guard against accidental navigation
+    var pendingBulkAddCount: Int = 0
+
     #if os(iOS)
     /// Whether the sidebar is currently presented (iOS only)
     var isSidebarPresented = false
